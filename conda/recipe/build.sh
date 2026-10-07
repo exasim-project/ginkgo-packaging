@@ -64,6 +64,8 @@ case "${GINKGO_BACKEND}" in
             -DCMAKE_CXX_COMPILER=icpx
             -DCMAKE_C_COMPILER=icx
             -DCMAKE_DISABLE_FIND_PACKAGE_IntelSYCL=ON
+            # MKL::MKL_SYCL needs TBB, which MKLConfig only finds this way.
+            -DTBB_DIR="${PREFIX}/lib/cmake/TBB"
         )
         export TBBROOT="${PREFIX}"
         # Fail early, with the compiler's own message, if the SYCL toolchain

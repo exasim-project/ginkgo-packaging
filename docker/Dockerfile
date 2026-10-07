@@ -44,6 +44,7 @@ RUN BACKEND="${BACKEND}" WITH_MPI="${WITH_MPI}" \
     HIP_ARCHITECTURES="${HIP_ARCHITECTURES}" \
     BUILD_JOBS="${BUILD_JOBS}" \
     build-ginkgo.sh /src/ginkgo /opt/ginkgo \
+    && mkdir -p /opt/ginkgo/share \
     && cp /src/ginkgo-revision /opt/ginkgo/share/ginkgo-revision
 
 
