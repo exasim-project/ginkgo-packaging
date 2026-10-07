@@ -37,6 +37,9 @@ case "${GINKGO_BACKEND}" in
             -DGINKGO_BUILD_CUDA=ON
             -DCMAKE_CUDA_ARCHITECTURES="${GINKGO_CUDA_ARCHITECTURES}"
             -DCMAKE_CUDA_HOST_COMPILER="${CXX}"
+            # conda-forge installs the header-only NVTX3 into the host
+            # prefix, not next to nvcc where Ginkgo's FindNVTX looks.
+            -DNVTX3_INCLUDE_DIR="${PREFIX}/targets/x86_64-linux/include/nvtx3"
         )
         ;;
     rocm)

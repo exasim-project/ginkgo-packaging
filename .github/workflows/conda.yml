@@ -49,7 +49,7 @@ on:
         description: Comma separated list of cpu, cuda, sycl, rocm (rocm is experimental)
         default: cpu,cuda,sycl
       channel:
-        description: prefix.dev channel to upload to
+        description: prefix.dev channel to upload to (default the PREFIX_CHANNEL variable)
         default: ""
       overwrite:
         description: Replace packages that already exist in the channel
@@ -144,7 +144,9 @@ jobs:
   publish:
     name: publish to prefix.dev
     needs: build
-    if: inputs.upload
+    # Publish whatever did build even if other platforms/backends failed;
+    # release.yml only rebuilds what is still missing on its next run.
+    if: ${{ !cancelled() && inputs.upload }}
     runs-on: ubuntu-latest
     # Holds the optional PREFIX_API_KEY secret, see README.md.
     environment: prefix
@@ -168,7 +170,7 @@ jobs:
 
       - name: Upload to prefix.dev
         env:
-          PREFIX_CHANNEL: ${{ inputs.channel }}
+          PREFIX_CHANNEL: ${{ inputs.channel || vars.PREFIX_CHANNEL }}
           PREFIX_API_KEY: ${{ secrets.PREFIX_API_KEY }}
           OVERWRITE: ${{ inputs.overwrite }}
         run: |

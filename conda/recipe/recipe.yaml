@@ -100,6 +100,8 @@ requirements:
         - libcufft-dev
     - if: ginkgo_backend == "sycl"
       then:
+        # mkl-devel ships MKLConfig.cmake, mkl-devel-dpcpp the SYCL libraries.
+        - mkl-devel ${{ mkl_version }}.*
         - mkl-devel-dpcpp ${{ mkl_version }}.*
         - onedpl-devel
         - intel-sycl-rt
