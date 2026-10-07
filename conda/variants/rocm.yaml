@@ -6,5 +6,7 @@ ginkgo_backend:
   - rocm
 mpi:
   - nompi
+# CDNA GPUs only: Ginkgo's HIP kernels assume 64-wide wavefronts and do not
+# compile for wave32 RDNA targets such as gfx1030/gfx1100.
 hip_architectures:
-  - "gfx908;gfx90a;gfx942;gfx1030;gfx1100"
+  - "gfx908;gfx90a;gfx942"

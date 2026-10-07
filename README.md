@@ -124,7 +124,8 @@ pixi run docker rocm v1.11.0             # needs a local docker
   may fail without failing the run. Use the `ginkgo-rocm` Docker image for
   anything serious.
 - GPU architectures are fixed at build time: CUDA `70;80;90` SASS + `90`
-  PTX, HIP `gfx908;gfx90a;gfx942;gfx1030;gfx1100`. Change them in
+  PTX, HIP `gfx908;gfx90a;gfx942` (CDNA only; Ginkgo's HIP kernels need
+  64-wide wavefronts, so RDNA GPUs are not supported). Change them in
   `conda/variants/*.yaml` and `docker/Dockerfile`.
 - The GPU builds compile with only 2 parallel jobs to stay within hosted
   runner memory. Expect several hours per job; the timeout is 6 h.

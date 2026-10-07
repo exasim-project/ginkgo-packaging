@@ -29,7 +29,8 @@ ARG WITH_MPI=ON
 ARG GINKGO_REF=develop
 ARG GINKGO_REPO=https://github.com/ginkgo-project/ginkgo.git
 ARG CUDA_ARCHITECTURES="70-real;80-real;90-real;90-virtual"
-ARG HIP_ARCHITECTURES="gfx908;gfx90a;gfx942;gfx1030;gfx1100"
+# CDNA only, Ginkgo's HIP kernels need 64-wide wavefronts (no RDNA).
+ARG HIP_ARCHITECTURES="gfx908;gfx90a;gfx942"
 # Kernel instantiation is memory hungry, GPU builds run out of RAM on hosted
 # runners with the default parallelism.
 ARG BUILD_JOBS=
