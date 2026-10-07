@@ -65,7 +65,7 @@ jobs:
           channel="https://prefix.dev/${CHANNEL}"
           # Replace the default channel and pin the version under test.
           sed -i.bak \
-            -e "s|https://prefix.dev/ginkgo\"|${channel}\"|" \
+            -e "s|\"https://prefix.dev/[^\"]*\"|\"${channel}\"|" \
             -e "s|ginkgo = { version = \"\*\"|ginkgo = { version = \"==${VERSION}\"|" \
             pixi.toml
           rm pixi.toml.bak

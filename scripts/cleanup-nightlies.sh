@@ -39,6 +39,8 @@ if [[ "${total}" -le "${keep}" ]]; then
     exit 0
 fi
 
+# The delete route takes the channel as one path segment, so a namespaced
+# channel such as owner/name has to be sent as owner%2Fname.
 status=0
 for version in $(head -n $((total - keep)) <<< "${versions}"); do
     while read -r path; do
@@ -48,7 +50,7 @@ for version in $(head -n $((total - keep)) <<< "${versions}"); do
         fi
         code=$(curl -sS -o /dev/null -w '%{http_code}' -X DELETE \
             -H "Authorization: Bearer ${PREFIX_API_KEY}" \
-            "${server}/api/v1/delete/${channel}/${path}")
+            "${server}/api/v1/delete/${channel//\//%2F}/${path}")
         if [[ "${code}" =~ ^2 ]]; then
             echo "deleted ${path}"
         else
