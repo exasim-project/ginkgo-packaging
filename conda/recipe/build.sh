@@ -55,19 +55,23 @@ case "${GINKGO_BACKEND}" in
         ;;
     sycl)
         # The whole project has to be compiled with the SYCL compiler.
-        # IntelSYCLConfig looks for the SYCL headers and libsycl next to the
-        # compiler in $BUILD_PREFIX, which conda's CMAKE_FIND_ROOT_PATH hides;
-        # point it at the copies intel-sycl-rt installs into $PREFIX.
+        # IntelSYCLConfig's feature test does not work inside the conda build
+        # environment (conda's CMAKE_FIND_ROOT_PATH hides the compiler's own
+        # headers and libraries). Ginkgo only uses it optionally and falls
+        # back to plain -fsycl flags without it.
         cmake_args+=(
             -DGINKGO_BUILD_SYCL=ON
             -DCMAKE_CXX_COMPILER=icpx
             -DCMAKE_C_COMPILER=icx
-            -DSYCL_INCLUDE_DIR="${PREFIX}/include"
-            -DSYCL_INCLUDE_SYCL_DIR="${PREFIX}/include/sycl"
-            -DSYCL_LIBRARY_DIR="${PREFIX}/lib"
-            -DSYCL_LIBRARY="${PREFIX}/lib/libsycl.so"
+            -DCMAKE_DISABLE_FIND_PACKAGE_IntelSYCL=ON
         )
         export TBBROOT="${PREFIX}"
+        # Fail early, with the compiler's own message, if the SYCL toolchain
+        # cannot build a trivial program in this environment.
+        printf '#include <sycl/sycl.hpp>\nint main() { sycl::queue q; return 0; }\n' > sycl-check.cpp
+        # shellcheck disable=SC2086 # the flag variables are word lists
+        icpx -fsycl ${CXXFLAGS:-} sycl-check.cpp ${LDFLAGS:-} -o sycl-check -v 2>&1 | tail -n 60
+        test -x sycl-check
         ;;
     *)
         echo "unknown backend ${GINKGO_BACKEND}" >&2
