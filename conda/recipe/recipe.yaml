@@ -159,11 +159,13 @@ tests:
     script:
       - if: unix
         then:
-          - cmake -S smoke -B smoke/build -G Ninja -DCMAKE_PREFIX_PATH="$PREFIX"
+          - cmake -S smoke -B smoke/build -G Ninja -DCMAKE_BUILD_TYPE=Release -DCMAKE_PREFIX_PATH="$PREFIX"
           - cmake --build smoke/build
           - ./smoke/build/ginkgo-smoke
         else:
-          - cmake -S smoke -B smoke\build -G Ninja -DCMAKE_PREFIX_PATH="%LIBRARY_PREFIX%"
+          # Release: MSVC cannot link a Debug program against the Release
+          # static libraries (/MDd vs /MD).
+          - cmake -S smoke -B smoke\build -G Ninja -DCMAKE_BUILD_TYPE=Release -DCMAKE_PREFIX_PATH="%LIBRARY_PREFIX%"
           - cmake --build smoke\build
           - smoke\build\ginkgo-smoke.exe
 

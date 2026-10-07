@@ -23,11 +23,11 @@ ninja = "*"
 cxx-compiler = "*"
 
 [tasks]
-configure = "cmake -S ../../conda/recipe/smoke -B build -G Ninja -DCMAKE_PREFIX_PATH=$CONDA_PREFIX"
+configure = "cmake -S ../../conda/recipe/smoke -B build -G Ninja -DCMAKE_BUILD_TYPE=Release -DCMAKE_PREFIX_PATH=$CONDA_PREFIX"
 smoke = { cmd = "cmake --build build && ./build/ginkgo-smoke", depends-on = ["configure"] }
 
 [target.win-64.tasks]
-configure = "cmake -S ../../conda/recipe/smoke -B build -G Ninja -DCMAKE_PREFIX_PATH=%CONDA_PREFIX%/Library"
+configure = "cmake -S ../../conda/recipe/smoke -B build -G Ninja -DCMAKE_BUILD_TYPE=Release -DCMAKE_PREFIX_PATH=%CONDA_PREFIX%/Library"
 smoke = { cmd = "cmake --build build && build\\ginkgo-smoke.exe", depends-on = ["configure"] }
 
 [feature.cpu.dependencies]
