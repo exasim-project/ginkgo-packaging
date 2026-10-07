@@ -55,11 +55,19 @@ case "${GINKGO_BACKEND}" in
         ;;
     sycl)
         # The whole project has to be compiled with the SYCL compiler.
+        # IntelSYCLConfig looks for the SYCL headers and libsycl next to the
+        # compiler in $BUILD_PREFIX, which conda's CMAKE_FIND_ROOT_PATH hides;
+        # point it at the copies intel-sycl-rt installs into $PREFIX.
         cmake_args+=(
             -DGINKGO_BUILD_SYCL=ON
             -DCMAKE_CXX_COMPILER=icpx
             -DCMAKE_C_COMPILER=icx
+            -DSYCL_INCLUDE_DIR="${PREFIX}/include"
+            -DSYCL_INCLUDE_SYCL_DIR="${PREFIX}/include/sycl"
+            -DSYCL_LIBRARY_DIR="${PREFIX}/lib"
+            -DSYCL_LIBRARY="${PREFIX}/lib/libsycl.so"
         )
+        export TBBROOT="${PREFIX}"
         ;;
     *)
         echo "unknown backend ${GINKGO_BACKEND}" >&2
@@ -74,6 +82,11 @@ if [[ "${GINKGO_BACKEND}" != "cpu" ]]; then
 fi
 
 # shellcheck disable=SC2086 # CMAKE_ARGS is a word list set by conda-build
-cmake -S . -B build ${CMAKE_ARGS:-} "${cmake_args[@]}"
+if ! cmake -S . -B build ${CMAKE_ARGS:-} "${cmake_args[@]}"; then
+    # Surface the try_compile details, which CMake only writes to files.
+    tail -n 200 build/CMakeFiles/CMakeConfigureLog.yaml || true
+    find build -name Compile.log -exec sh -c 'echo "== $1"; cat "$1"' _ {} \; || true
+    exit 1
+fi
 cmake --build build
 cmake --install build
