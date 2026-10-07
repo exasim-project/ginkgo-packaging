@@ -185,8 +185,9 @@ jobs:
           fi
           mapfile -t files < <(find packages -type f \( -name '*.conda' -o -name '*.tar.bz2' \) | sort)
           if [ "${#files[@]}" -eq 0 ]; then
-            echo "::error::No packages were built"
-            exit 1
+            # The failed build jobs already carry the error.
+            echo "::warning::No packages were built, nothing to upload"
+            exit 0
           fi
           printf 'uploading %s\n' "${files[@]}"
           # Nightlies may be rebuilt on the same day and replace the existing

@@ -64,10 +64,11 @@ case "${GINKGO_BACKEND}" in
             -DCMAKE_CXX_COMPILER=icpx
             -DCMAKE_C_COMPILER=icx
             -DCMAKE_DISABLE_FIND_PACKAGE_IntelSYCL=ON
-            # MKL::MKL_SYCL needs TBB, which MKLConfig only finds this way.
-            -DTBB_DIR="${PREFIX}/lib/cmake/TBB"
+            # MKL's SYCL target defaults to TBB threading, whose config
+            # MKLConfig does not find here. Ginkgo only uses MKL for its GPU
+            # BLAS and sparse kernels, so the host threading layer is moot.
+            -DMKL_SYCL_THREADING=sequential
         )
-        export TBBROOT="${PREFIX}"
         # Fail early, with the compiler's own message, if the SYCL toolchain
         # cannot build a trivial program in this environment.
         printf '#include <sycl/sycl.hpp>\nint main() { sycl::queue q; return 0; }\n' > sycl-check.cpp
