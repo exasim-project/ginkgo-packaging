@@ -32,7 +32,11 @@ build:
     # GPU and MPI builds are down-prioritized so that a plain
     # `conda install ginkgo` resolves to the CPU-only, non-MPI build. Select
     # the others explicitly, e.g. `ginkgo=*=cuda_*` or `ginkgo=*=*_openmpi_*`.
-    down_prioritize_variant: ${{ (0 if ginkgo_backend == "cpu" else 2) + (0 if mpi == "nompi" else 1) }}
+    # Nightlies (x.y.z.devYYYYMMDD) share the channel with the releases and
+    # sort above them by version, so they get a penalty larger than any
+    # variant's: solvers then only pick them when asked for explicitly, e.g.
+    # `ginkgo>=2.0.0.dev0`.
+    down_prioritize_variant: ${{ (0 if ginkgo_backend == "cpu" else 2) + (0 if mpi == "nompi" else 1) + (10 if ".dev" in version else 0) }}
   skip:
     - ginkgo_backend != "cpu" and not linux
     - mpi != "nompi" and win

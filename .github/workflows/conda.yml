@@ -174,7 +174,7 @@ jobs:
         run: |
           set -euo pipefail
           if [ -z "${PREFIX_CHANNEL}" ]; then
-            echo "::error::No prefix.dev channel given, set the PREFIX_CHANNEL / PREFIX_NIGHTLY_CHANNEL repository variables"
+            echo "::error::No prefix.dev channel given, set the PREFIX_CHANNEL repository variable"
             exit 1
           fi
           if [ -z "${PREFIX_API_KEY}" ]; then

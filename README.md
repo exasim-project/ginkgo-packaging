@@ -17,17 +17,20 @@ release, and nightly builds of `develop`.
 Toolchains: CUDA 12.9 (the newest that Ginkgo 1.10 supports), ROCm 6.4.4,
 oneAPI 2025.2; GCC 14 / Clang 19 / VS 2022 for the conda builds.
 
-**conda** (prefix.dev). Releases go to the channel in the `PREFIX_CHANNEL`
-repository variable. Nightlies go to `PREFIX_NIGHTLY_CHANNEL`, with versions
-like `2.0.0.dev20261007`. Nightlies need their own channel because those
-versions sort above the latest release. The build string picks the variant:
+**conda** (prefix.dev). Releases and nightlies share the channel in the
+`PREFIX_CHANNEL` repository variable. The build string picks the variant:
 `<backend>_<mpi>_h<hash>_<n>`. A plain install resolves to the CPU build
 without MPI, because every other variant is down-prioritized.
+
+Nightlies have versions like `2.0.0.dev20261007`, which sort above the latest
+release. The recipe gives them a priority penalty larger than any variant's,
+so pixi and conda pick a release unless you ask for a nightly by version.
+Only the newest 14 nightlies are kept (`cleanup.yml`).
 
 ```sh
 pixi add ginkgo                                       # with https://prefix.dev/<channel> in channels
 conda install -c https://prefix.dev/<channel> -c conda-forge "ginkgo=1.11.0=cuda_nompi_*"
-conda install -c https://prefix.dev/<nightly channel> -c conda-forge "ginkgo=*=sycl_*"
+conda install -c https://prefix.dev/<channel> -c conda-forge "ginkgo>=2.0.0.dev0=sycl_*"   # nightly
 ```
 
 **pixi**: `pixi/example/pixi.toml` shows one environment per variant and
@@ -59,7 +62,8 @@ scripts/                     render-all, release-plan, install-rocm, docker-buil
 | workflow | trigger | does |
 |---|---|---|
 | `release.yml` | manual (`versions`, default `1.10.0 1.11.0`), `repository_dispatch: ginkgo-release` | builds and publishes **only what is missing** for the given releases, then tests with pixi |
-| `nightly.yml` | daily 02:17 UTC, manual | builds `develop` (skipped if unchanged for a day) into the nightly channel, tags `nightly*` |
+| `nightly.yml` | daily 02:17 UTC, manual | builds `develop` (skipped if unchanged for a day) into the shared channel, tags `nightly*` |
+| `cleanup.yml` | daily 14:17 UTC, manual (dry run by default) | deletes all but the newest 14 nightly versions; never touches release versions |
 | `conda.yml` | reusable, manual | rattler-build per platform and backend, uploads with `rattler-build upload prefix` |
 | `docker.yml` | reusable, manual | builds one image per backend, runs the smoke test in it, pushes to ghcr.io |
 | `pixi.yml` | reusable, manual | installs the published packages through the pixi example, runs the smoke test |
@@ -94,14 +98,11 @@ gh api repos/<owner>/ginkgo-packaging/dispatches \
 
 ## Setup
 
-- Set the repository variables `PREFIX_CHANNEL` (releases) and
-  `PREFIX_NIGHTLY_CHANNEL` (nightlies). Both channels must exist on prefix.dev.
-- Create the environment `prefix`. Uploads authenticate either way:
-  - **trusted publishing** (recommended, no secret): on prefix.dev, add this
-    repository as a trusted publisher to both channels. The OIDC token comes
-    from the calling workflow, so allow `release.yml` and `nightly.yml`.
-  - **API key**: store it as the `PREFIX_API_KEY` secret in the `prefix`
-    environment.
+- Set the repository variable `PREFIX_CHANNEL` to your prefix.dev channel.
+- Create the environment `prefix` with the secret `PREFIX_API_KEY`, a
+  prefix.dev API key with delete rights. `cleanup.yml` always needs it, because
+  prefix.dev's delete endpoint takes an API key. Uploads use the key when it
+  is set and fall back to trusted publishing otherwise.
 - Images are pushed with `GITHUB_TOKEN`; make the ghcr.io packages public
   after the first push.
 

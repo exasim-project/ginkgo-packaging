@@ -1,0 +1,38 @@
+name: cleanup
+
+# Removes old nightlies from the prefix.dev channel they share with the
+# releases, keeping the newest ones. Release versions are never touched, see
+# scripts/cleanup-nightlies.sh. Runs every day after the nightly.
+on:
+  schedule:
+    - cron: "17 14 * * *"
+  workflow_dispatch:
+    inputs:
+      keep:
+        description: Number of nightly versions to keep
+        default: "14"
+      dry_run:
+        description: Only list what would be deleted
+        type: boolean
+        default: true
+
+permissions:
+  contents: read
+
+concurrency:
+  group: cleanup
+
+jobs:
+  cleanup:
+    runs-on: ubuntu-latest
+    # Holds the PREFIX_API_KEY secret.
+    environment: prefix
+    steps:
+      - uses: actions/checkout@v7
+      - name: Delete old nightlies
+        env:
+          PREFIX_CHANNEL: ${{ vars.PREFIX_CHANNEL }}
+          PREFIX_API_KEY: ${{ secrets.PREFIX_API_KEY }}
+          KEEP: ${{ inputs.keep || '14' }}
+          DRY_RUN: ${{ github.event_name == 'workflow_dispatch' && inputs.dry_run }}
+        run: scripts/cleanup-nightlies.sh
