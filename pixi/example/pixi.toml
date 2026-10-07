@@ -8,8 +8,14 @@ name = "ginkgo-example"
 # Releases and nightlies share one prefix.dev channel (pixi.yml swaps in the
 # configured one in CI). Nightlies are only picked when asked for, e.g.
 #   ginkgo = { version = ">=2.0.0.dev0", build = "cpu_nompi_*" }
-channels = ["https://prefix.dev/greole/exasim-project", "conda-forge"]
-platforms = ["linux-64", "osx-arm64", "osx-64", "win-64"]
+# conda-forge/label/mpi-external holds the external_* MPI placeholders.
+channels = ["https://prefix.dev/greole/exasim-project", "conda-forge", "conda-forge/label/mpi-external"]
+platforms = [
+  "linux-64", "osx-arm64", "osx-64", "win-64",
+  # GPU environments solve against a CUDA 12 driver (set CONDA_OVERRIDE_CUDA
+  # on machines without one).
+  { name = "linux-64-cuda", platform = "linux-64", cuda = "12" },
+]
 
 [dependencies]
 cmake = ">=3.21"
@@ -32,9 +38,17 @@ platforms = ["linux-64", "osx-arm64", "osx-64"]
 [feature.mpi.dependencies]
 ginkgo = { version = "*", build = "cpu_openmpi_*" }
 
+# CUDA + GPU-aware MPI from the system: conda-forge's external_* placeholder
+# satisfies the MPI dependency, the machine's MPICH-ABI library (Cray MPICH,
+# Intel MPI, MVAPICH, MPICH) is found through LD_LIBRARY_PATH at runtime.
+[feature.cuda-mpi]
+platforms = ["linux-64-cuda"]
+[feature.cuda-mpi.dependencies]
+ginkgo = { version = "*", build = "cuda_mpich_*" }
+mpich = { version = "4.*", build = "external_*" }
+
 [feature.cuda]
-platforms = ["linux-64"]
-system-requirements = { cuda = "12" }
+platforms = ["linux-64-cuda"]
 [feature.cuda.dependencies]
 ginkgo = { version = "*", build = "cuda_nompi_*" }
 
@@ -47,4 +61,5 @@ ginkgo = { version = "*", build = "sycl_nompi_*" }
 cpu = ["cpu"]
 mpi = ["mpi"]
 cuda = ["cuda"]
+cuda-mpi = ["cuda-mpi"]
 sycl = ["sycl"]

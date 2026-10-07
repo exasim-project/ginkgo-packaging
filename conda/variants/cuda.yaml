@@ -2,9 +2,11 @@
 # of Ginkgo 1.10, 1.11 and develop build with (1.10 does not know CUDA 13).
 ginkgo_backend:
   - cuda
+# The MPI builds are GPU-aware, see build.sh.
 mpi:
   - nompi
   - openmpi
+  - mpich
 cuda_compiler:
   - cuda-nvcc
 cuda_compiler_version:

@@ -16,7 +16,7 @@
   },
   "sycl": {
     "base_image": "intel/oneapi-basekit:2025.2.2-0-devel-ubuntu24.04",
-    "with_mpi": "OFF",
+    "with_mpi": "ON",
     "build_jobs": "2"
   }
 }

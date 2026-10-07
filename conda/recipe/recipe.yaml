@@ -87,8 +87,12 @@ requirements:
   host:
     - if: osx
       then: llvm-openmp
+    # Install the matching `external_*` build of openmpi/mpich next to
+    # ginkgo to use the system MPI instead, see README.md.
     - if: mpi == "openmpi"
       then: openmpi
+    - if: mpi == "mpich"
+      then: mpich
     - if: ginkgo_backend == "cuda"
       then:
         - cuda-version ${{ cuda_compiler_version }}.*

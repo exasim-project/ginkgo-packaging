@@ -43,6 +43,8 @@ c_stdlib_version:
 
 openmpi:
   - "5"
+mpich:
+  - "4"
 
 ginkgo_backend:
   - cpu

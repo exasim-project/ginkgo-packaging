@@ -1,7 +1,10 @@
-# Reference + OpenMP kernels, with and without MPI.
+# Reference + OpenMP kernels, without MPI and with both MPI ABIs (see the
+# MPI section of README.md for using the system MPI instead).
 ginkgo_backend:
   - cpu
 mpi:
   - nompi
   - if: unix
-    then: openmpi
+    then:
+      - openmpi
+      - mpich

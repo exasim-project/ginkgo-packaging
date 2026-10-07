@@ -16,10 +16,13 @@ ARG BASE_IMAGE=ubuntu:24.04
 FROM ${BASE_IMAGE} AS base
 ARG DEBIAN_FRONTEND=noninteractive
 ARG WITH_MPI=ON
+# MPICH rather than Open MPI: its ABI is shared by Cray MPICH, Intel MPI and
+# MVAPICH, so on HPC systems the host's (GPU-aware) MPI can replace the one
+# in the image at runtime, see README.md.
 RUN apt-get update \
     && apt-get install -y --no-install-recommends \
         build-essential ca-certificates cmake git ninja-build \
-        $( [ "${WITH_MPI}" = "ON" ] && echo libopenmpi-dev openmpi-bin ) \
+        $( [ "${WITH_MPI}" = "ON" ] && echo libmpich-dev mpich ) \
     && rm -rf /var/lib/apt/lists/*
 
 

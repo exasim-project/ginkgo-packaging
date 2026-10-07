@@ -9,8 +9,8 @@ release, and nightly builds of `develop`.
 
 | | cpu | cuda | rocm | sycl |
 |---|---|---|---|---|
-| conda `linux-64` | nompi, openmpi | nompi, openmpi | experimental, nightly only | nompi |
-| conda `osx-arm64`, `osx-64` | nompi, openmpi | – | – | – |
+| conda `linux-64` | nompi, openmpi, mpich | nompi, openmpi, mpich | experimental, nightly only | nompi, mpich |
+| conda `osx-arm64`, `osx-64` | nompi, openmpi, mpich | – | – | – |
 | conda `win-64` | nompi | – | – | – |
 | Docker `linux/amd64` | `ginkgo-cpu` | `ginkgo-cuda` | `ginkgo-rocm` | `ginkgo-sycl` |
 
@@ -41,6 +41,49 @@ builds the smoke test against it (`pixi run -e cuda smoke`).
 backend's devel base image (ubuntu, nvidia/cuda, rocm/dev, intel/oneapi) with
 Ginkgo installed in `/opt/ginkgo`, and `CMAKE_PREFIX_PATH` set so
 `find_package(Ginkgo)` works out of the box.
+
+## MPI: use the system MPI, GPU-aware
+
+The MPI builds link against an MPI ABI rather than shipping a fixed MPI, so
+that on a cluster the machine's own (GPU-aware) MPI is used:
+
+- `mpich` builds work with any MPICH-ABI implementation: MPICH, Cray MPICH,
+  Intel MPI, MVAPICH.
+- `openmpi` builds work with Open MPI 5.
+
+**GPU builds with MPI are GPU-aware** (`GINKGO_FORCE_GPU_AWARE_MPI=ON`).
+Ginkgo passes device buffers directly to MPI and decides this at build time,
+so these packages need a GPU-aware MPI at runtime. For an MPI without GPU
+support, use the `nompi` or CPU builds.
+
+**conda / pixi**: install conda-forge's `external_*` placeholder for the MPI,
+which satisfies the dependency without installing an MPI, and put the system
+library on the loader path:
+
+The placeholders live on the `conda-forge/label/mpi-external` channel:
+
+```sh
+pixi workspace channel add conda-forge/label/mpi-external
+pixi add "ginkgo=1.11.0=cuda_mpich_*" "mpich=4.*=external_*"
+module load cray-mpich                          # or your site's MPI module
+export LD_LIBRARY_PATH=$CRAY_MPICH_DIR/lib-abi-mpich:$LD_LIBRARY_PATH   # Cray: MPICH-ABI libs
+srun ./my_app
+```
+
+For Open MPI use `"ginkgo=*=cuda_openmpi_*" "openmpi=5.*=external_*"`.
+Without the `external_*` pin, conda-forge's own MPI gets installed, which is
+fine for CPU builds and single-node testing.
+
+**Docker**: the images contain MPICH as a stand-in. On HPC systems, replace it
+with the host's MPICH-ABI library at runtime. Container runtimes such as
+Sarus, Podman-HPC or Apptainer do this with their MPI hooks; by hand it is a
+bind mount plus `LD_LIBRARY_PATH`, e.g.
+
+```sh
+apptainer exec --nv --bind $CRAY_MPICH_DIR,/opt/cray \
+  --env LD_LIBRARY_PATH=$CRAY_MPICH_DIR/lib-abi-mpich:\$LD_LIBRARY_PATH \
+  docker://ghcr.io/exasim-project/ginkgo-cuda:1.11.0 ./my_app
+```
 
 ## Layout
 

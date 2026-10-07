@@ -2,8 +2,10 @@
 # from conda-forge. mkl-devel-dpcpp is on conda-forge from 2025.2 onwards.
 ginkgo_backend:
   - sycl
+# MPICH ABI, which Intel MPI implements. The MPI build is GPU-aware.
 mpi:
   - nompi
+  - mpich
 dpcpp_compiler:
   - dpcpp
 dpcpp_compiler_version:

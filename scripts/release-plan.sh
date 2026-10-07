@@ -26,8 +26,9 @@ out="${GITHUB_OUTPUT:-/dev/stdout}"
 # conda/variants.
 expected_builds() {
     case "$1:$2" in
-        cpu:win-64) echo 1 ;;
-        cpu:* | cuda:*) echo 2 ;;
+        cpu:win-64 | rocm:*) echo 1 ;;
+        cpu:* | cuda:*) echo 3 ;;
+        sycl:*) echo 2 ;;
         *) echo 1 ;;
     esac
 }

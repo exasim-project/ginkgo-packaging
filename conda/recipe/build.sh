@@ -28,6 +28,12 @@ if [[ "${GINKGO_MPI}" == "nompi" ]]; then
     cmake_args+=(-DGINKGO_BUILD_MPI=OFF)
 else
     cmake_args+=(-DGINKGO_BUILD_MPI=ON)
+    # GPU builds with MPI pass device buffers straight to MPI. Ginkgo fixes
+    # this at build time (is_gpu_aware() is constexpr), so these packages
+    # need a GPU-aware MPI at runtime, typically the system one.
+    if [[ "${GINKGO_BACKEND}" != "cpu" ]]; then
+        cmake_args+=(-DGINKGO_FORCE_GPU_AWARE_MPI=ON)
+    fi
 fi
 
 case "${GINKGO_BACKEND}" in

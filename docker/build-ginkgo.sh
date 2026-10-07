@@ -58,6 +58,12 @@ case "${BACKEND:-cpu}" in
         ;;
 esac
 
+# GPU builds with MPI pass device buffers straight to MPI; Ginkgo fixes this
+# at build time, so the image expects a GPU-aware MPI at runtime.
+if [[ "${WITH_MPI:-ON}" == "ON" && "${BACKEND:-cpu}" != "cpu" ]]; then
+    cmake_args+=(-DGINKGO_FORCE_GPU_AWARE_MPI=ON)
+fi
+
 if [[ -n "${BUILD_JOBS:-}" ]]; then
     export CMAKE_BUILD_PARALLEL_LEVEL="${BUILD_JOBS}"
 fi
