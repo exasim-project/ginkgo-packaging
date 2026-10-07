@@ -1,0 +1,22 @@
+{
+  "cpu": {
+    "base_image": "ubuntu:24.04",
+    "with_mpi": "ON",
+    "build_jobs": ""
+  },
+  "cuda": {
+    "base_image": "nvidia/cuda:12.9.1-devel-ubuntu24.04",
+    "with_mpi": "ON",
+    "build_jobs": "2"
+  },
+  "rocm": {
+    "base_image": "rocm/dev-ubuntu-24.04:6.4.4-complete",
+    "with_mpi": "ON",
+    "build_jobs": "2"
+  },
+  "sycl": {
+    "base_image": "intel/oneapi-basekit:2025.2.2-0-devel-ubuntu24.04",
+    "with_mpi": "OFF",
+    "build_jobs": "2"
+  }
+}

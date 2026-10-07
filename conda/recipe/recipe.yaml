@@ -1,0 +1,161 @@
+# rattler-build recipe for Ginkgo.
+#
+# The recipe builds any Ginkgo ref. The workflows choose what to build through
+# environment variables:
+#   GINKGO_VERSION       conda package version, e.g. 1.11.0 or 2.0.0.dev20261007
+#   GINKGO_REF           git tag, branch or commit to build (default: v<version>)
+#   GINKGO_BUILD_NUMBER  conda build number (default: 0)
+#
+# The backend (cpu, cuda, rocm, sycl) and the MPI flavour come from the variant
+# configs in ../variants, see ../../README.md.
+context:
+  name: ginkgo
+  version: ${{ env.get("GINKGO_VERSION", default="1.11.0") }}
+  ref: ${{ env.get("GINKGO_REF", default="v" ~ version) }}
+  build_number: ${{ env.get("GINKGO_BUILD_NUMBER", default="0") | int }}
+
+package:
+  name: ${{ name }}
+  version: ${{ version }}
+
+source:
+  git: https://github.com/ginkgo-project/ginkgo.git
+  rev: ${{ ref }}
+
+build:
+  number: ${{ build_number }}
+  string: ${{ ginkgo_backend }}_${{ mpi }}_h${{ hash }}_${{ build_number }}
+  variant:
+    use_keys:
+      - ginkgo_backend
+      - mpi
+    # GPU and MPI builds are down-prioritized so that a plain
+    # `conda install ginkgo` resolves to the CPU-only, non-MPI build. Select
+    # the others explicitly, e.g. `ginkgo=*=cuda_*` or `ginkgo=*=*_openmpi_*`.
+    down_prioritize_variant: ${{ (0 if ginkgo_backend == "cpu" else 2) + (0 if mpi == "nompi" else 1) }}
+  skip:
+    - ginkgo_backend != "cpu" and not linux
+    - mpi != "nompi" and win
+  script:
+    file: build
+    env:
+      GINKGO_BACKEND: ${{ ginkgo_backend }}
+      GINKGO_MPI: ${{ mpi }}
+      GINKGO_CUDA_ARCHITECTURES: ${{ cuda_architectures if ginkgo_backend == "cuda" else "" }}
+      GINKGO_HIP_ARCHITECTURES: ${{ hip_architectures if ginkgo_backend == "rocm" else "" }}
+  dynamic_linking:
+    # The experimental ROCm build links against the system ROCm in /opt/rocm,
+    # because hipBLAS, hipSPARSE and hipRAND are not packaged on conda-forge.
+    missing_dso_allowlist:
+      - if: ginkgo_backend == "rocm"
+        then:
+          - /opt/rocm/**
+          - "**/libamdhip64.so*"
+          - "**/libhipblas.so*"
+          - "**/libhipsparse.so*"
+          - "**/libhiprand.so*"
+          - "**/libhipfft.so*"
+          - "**/librocblas.so*"
+          - "**/librocsparse.so*"
+          - "**/librocrand.so*"
+          - "**/libroctx64.so*"
+          - "**/libstdc++.so*"
+          - "**/libgcc_s.so*"
+
+requirements:
+  build:
+    - if: ginkgo_backend != "rocm"
+      then:
+        - ${{ compiler("c") }}
+        - ${{ compiler("cxx") }}
+        - ${{ stdlib("c") }}
+    - if: ginkgo_backend == "cuda"
+      then:
+        - ${{ compiler("cuda") }}
+    - if: ginkgo_backend == "sycl"
+      then:
+        - ${{ compiler("dpcpp") }}
+    - cmake >=3.21
+    - ninja
+    - git
+    - if: osx
+      then: llvm-openmp
+  host:
+    - if: osx
+      then: llvm-openmp
+    - if: mpi == "openmpi"
+      then: openmpi
+    - if: ginkgo_backend == "cuda"
+      then:
+        - cuda-version ${{ cuda_compiler_version }}.*
+        - cuda-cudart-dev
+        - cuda-nvtx-dev
+        - libcublas-dev
+        - libcusparse-dev
+        - libcurand-dev
+        - libcufft-dev
+    - if: ginkgo_backend == "sycl"
+      then:
+        - mkl-devel-dpcpp ${{ mkl_version }}.*
+        - onedpl-devel
+        - intel-sycl-rt
+  run:
+    - if: ginkgo_backend == "cuda"
+      then: __cuda
+
+tests:
+  - package_contents:
+      include:
+        - ginkgo/ginkgo.hpp
+        - ginkgo/config.hpp
+      lib:
+        - ginkgo
+        - ginkgo_reference
+        - ginkgo_device
+        - if: ginkgo_backend == "cuda"
+          then: ginkgo_cuda
+        - if: ginkgo_backend == "rocm"
+          then: ginkgo_hip
+        - if: ginkgo_backend == "sycl"
+          then: ginkgo_dpcpp
+      files:
+        - if: win
+          then: Library/lib/cmake/Ginkgo/GinkgoConfig.cmake
+          else: lib/cmake/Ginkgo/GinkgoConfig.cmake
+  # Builds a small program against the installed package with
+  # find_package(Ginkgo) and runs it on the reference executor, which works
+  # on a build machine without a GPU.
+  - files:
+      recipe:
+        - smoke/
+    requirements:
+      run:
+        - if: ginkgo_backend != "rocm"
+          then:
+            - ${{ compiler("cxx") }}
+            - ${{ stdlib("c") }}
+        - cmake >=3.21
+        - ninja
+    script:
+      - if: unix
+        then:
+          - cmake -S smoke -B smoke/build -G Ninja -DCMAKE_PREFIX_PATH="$PREFIX"
+          - cmake --build smoke/build
+          - ./smoke/build/ginkgo-smoke
+        else:
+          - cmake -S smoke -B smoke\build -G Ninja -DCMAKE_PREFIX_PATH="%LIBRARY_PREFIX%"
+          - cmake --build smoke\build
+          - smoke\build\ginkgo-smoke.exe
+
+about:
+  homepage: https://ginkgo-project.github.io/
+  repository: https://github.com/ginkgo-project/ginkgo
+  documentation: https://ginkgo-project.github.io/ginkgo-generated-documentation/doc/develop/
+  license: BSD-3-Clause
+  license_file: LICENSE
+  summary: Numerical linear algebra library targeting many-core architectures
+  description: |
+    Ginkgo is a high-performance numerical linear algebra library for
+    many-core systems, with a focus on solving sparse linear systems. It
+    provides kernels for CPUs (reference and OpenMP) and GPUs (CUDA, HIP and
+    SYCL) behind a single executor abstraction.

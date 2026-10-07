@@ -1,0 +1,35 @@
+# Maintainer workspace: the same rattler-build version and commands CI uses.
+#   pixi run render                         # render every recipe variant
+#   pixi run build cpu 1.11.0               # build a conda package locally
+#   pixi run build cuda 2.0.0.dev0 develop  # build a nightly-style package
+#   pixi run docker cuda v1.11.0            # build a Docker image locally
+[workspace]
+name = "ginkgo-packaging"
+channels = ["conda-forge"]
+platforms = ["linux-64", "osx-arm64", "osx-64", "win-64"]
+
+[dependencies]
+rattler-build = "==0.76.1"
+[target.unix.dependencies]
+jq = "*"
+
+[tasks.render]
+cmd = "bash scripts/render-all.sh"
+description = "Render the conda recipe for every backend, platform and Ginkgo version"
+
+[tasks.build]
+args = [
+  { arg = "backend", default = "cpu" },
+  { arg = "version", default = "1.11.0" },
+  { arg = "ref", default = "" },
+]
+cmd = "GINKGO_VERSION={{ version }} GINKGO_REF={{ ref if ref else 'v' ~ version }} rattler-build build --recipe conda/recipe/recipe.yaml --variant-config conda/variants/base.yaml --variant-config conda/variants/{{ backend }}.yaml --channel conda-forge --output-dir output"
+description = "Build the conda package for one backend into ./output"
+
+[tasks.docker]
+args = [
+  { arg = "backend", default = "cpu" },
+  { arg = "ref", default = "v1.11.0" },
+]
+cmd = "bash scripts/docker-build.sh {{ backend }} {{ ref }}"
+description = "Build the Docker image for one backend with the local docker"

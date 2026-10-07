@@ -1,0 +1,49 @@
+# Example of consuming the Ginkgo conda packages from a pixi workspace. Each
+# environment pins one Ginkgo build variant through its build string:
+#   pixi run -e cpu smoke
+#   pixi run -e cuda smoke      (needs an NVIDIA driver, or CONDA_OVERRIDE_CUDA)
+# The pixi.yml workflow runs this against freshly published packages.
+[workspace]
+name = "ginkgo-example"
+# Nightlies live under the "nightly" label:
+#   pixi workspace channel add --prepend https://conda.anaconda.org/ginkgo-project/label/nightly
+channels = ["https://conda.anaconda.org/ginkgo-project", "conda-forge"]
+platforms = ["linux-64", "osx-arm64", "osx-64", "win-64"]
+
+[dependencies]
+cmake = ">=3.21"
+ninja = "*"
+cxx-compiler = "*"
+
+[tasks]
+configure = "cmake -S ../../conda/recipe/smoke -B build -G Ninja -DCMAKE_PREFIX_PATH=$CONDA_PREFIX"
+smoke = { cmd = "cmake --build build && ./build/ginkgo-smoke", depends-on = ["configure"] }
+
+[target.win-64.tasks]
+configure = "cmake -S ../../conda/recipe/smoke -B build -G Ninja -DCMAKE_PREFIX_PATH=%CONDA_PREFIX%/Library"
+smoke = { cmd = "cmake --build build && build\\ginkgo-smoke.exe", depends-on = ["configure"] }
+
+[feature.cpu.dependencies]
+ginkgo = { version = "*", build = "cpu_nompi_*" }
+
+[feature.mpi]
+platforms = ["linux-64", "osx-arm64", "osx-64"]
+[feature.mpi.dependencies]
+ginkgo = { version = "*", build = "cpu_openmpi_*" }
+
+[feature.cuda]
+platforms = ["linux-64"]
+system-requirements = { cuda = "12" }
+[feature.cuda.dependencies]
+ginkgo = { version = "*", build = "cuda_nompi_*" }
+
+[feature.sycl]
+platforms = ["linux-64"]
+[feature.sycl.dependencies]
+ginkgo = { version = "*", build = "sycl_nompi_*" }
+
+[environments]
+cpu = ["cpu"]
+mpi = ["mpi"]
+cuda = ["cuda"]
+sycl = ["sycl"]

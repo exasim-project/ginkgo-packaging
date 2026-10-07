@@ -1,0 +1,83 @@
+name: pixi
+
+# Installs published Ginkgo packages into the pixi example workspace
+# (pixi/example) and runs the smoke test, i.e. checks the packages the way a
+# user consumes them. Called after uploads by release.yml and nightly.yml.
+on:
+  workflow_call:
+    inputs:
+      version:
+        description: Ginkgo package version to test
+        type: string
+        required: true
+      label:
+        description: anaconda.org label the packages were uploaded to
+        type: string
+        default: main
+  workflow_dispatch:
+    inputs:
+      version:
+        description: Ginkgo package version to test
+        required: true
+        default: 1.11.0
+      label:
+        description: anaconda.org label the packages were uploaded to
+        default: main
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    name: ${{ matrix.env }} on ${{ matrix.os }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - {os: ubuntu-latest, env: cpu}
+          - {os: ubuntu-latest, env: mpi}
+          - {os: ubuntu-latest, env: cuda}
+          - {os: ubuntu-latest, env: sycl}
+          - {os: macos-latest, env: cpu}
+          - {os: macos-latest, env: mpi}
+          - {os: windows-2022, env: cpu}
+    defaults:
+      run:
+        working-directory: pixi/example
+    env:
+      # No GPU on the runner; the smoke test only uses the reference executor.
+      CONDA_OVERRIDE_CUDA: "12.9"
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: prefix-dev/setup-pixi@v0.11.0
+        with:
+          run-install: false
+
+      - name: Point the workspace at the tested channel and version
+        shell: bash
+        env:
+          OWNER: ${{ vars.ANACONDA_OWNER || 'ginkgo-project' }}
+          LABEL: ${{ inputs.label }}
+          VERSION: ${{ inputs.version }}
+        run: |
+          set -euo pipefail
+          channel="https://conda.anaconda.org/${OWNER}"
+          if [ "${LABEL}" != "main" ]; then
+            channel="${channel}/label/${LABEL}"
+          fi
+          # Replace the default channel and pin the version under test.
+          sed -i.bak \
+            -e "s|https://conda.anaconda.org/ginkgo-project|${channel}|" \
+            -e "s|ginkgo = { version = \"\*\"|ginkgo = { version = \"==${VERSION}\"|" \
+            pixi.toml
+          rm pixi.toml.bak
+          grep -nE "channels|ginkgo =" pixi.toml
+
+      - name: Run the smoke test
+        run: pixi run --environment ${{ matrix.env }} smoke
+
+      - name: Show the installed Ginkgo build
+        if: always()
+        run: pixi list --environment ${{ matrix.env }} ginkgo

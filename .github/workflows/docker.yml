@@ -1,0 +1,162 @@
+name: docker
+
+# Builds one Docker image per backend for one Ginkgo ref, runs the smoke test
+# inside it and optionally pushes it to ghcr.io/<owner>/ginkgo-<backend>.
+# Called by release.yml and nightly.yml, and can be run by hand.
+on:
+  workflow_call:
+    inputs:
+      ref:
+        description: Ginkgo git tag, branch or commit
+        type: string
+        required: true
+      version:
+        description: Version recorded in the image labels
+        type: string
+        required: true
+      tags:
+        description: Space separated image tags, e.g. "1.11.0 latest"
+        type: string
+        required: true
+      backends:
+        description: Comma separated list of cpu, cuda, rocm, sycl
+        type: string
+        default: cpu,cuda,rocm,sycl
+      push:
+        type: boolean
+        default: false
+  workflow_dispatch:
+    inputs:
+      ref:
+        description: Ginkgo git tag, branch or commit (e.g. v1.11.0, develop)
+        required: true
+        default: v1.11.0
+      version:
+        description: Version recorded in the image labels
+        required: true
+        default: 1.11.0
+      tags:
+        description: Space separated image tags
+        required: true
+        default: 1.11.0
+      backends:
+        description: Comma separated list of cpu, cuda, rocm, sycl
+        default: cpu,cuda,rocm,sycl
+      push:
+        description: Push the images to ghcr.io
+        type: boolean
+        default: false
+
+permissions:
+  contents: read
+  packages: write
+
+jobs:
+  matrix:
+    runs-on: ubuntu-latest
+    outputs:
+      backends: ${{ steps.matrix.outputs.backends }}
+    steps:
+      - id: matrix
+        env:
+          BACKENDS: ${{ inputs.backends }}
+        run: |
+          set -euo pipefail
+          backends=$(jq -cn --arg b "${BACKENDS}" \
+            '$b | gsub(" "; "") | split(",") | map(select(IN("cpu", "cuda", "rocm", "sycl")))')
+          if [ "$(jq length <<< "${backends}")" -eq 0 ]; then
+            echo "::error::no known backend in '${BACKENDS}'"
+            exit 1
+          fi
+          echo "backends=${backends}" >> "${GITHUB_OUTPUT}"
+
+  image:
+    name: ${{ matrix.backend }}
+    needs: matrix
+    runs-on: ubuntu-latest
+    timeout-minutes: 360
+    strategy:
+      fail-fast: false
+      matrix:
+        backend: ${{ fromJSON(needs.matrix.outputs.backends) }}
+    steps:
+      - uses: actions/checkout@v7
+
+      # The CUDA, ROCm and oneAPI base images alone take up to 30 GB.
+      - name: Free disk space
+        if: matrix.backend != 'cpu'
+        run: |
+          sudo rm -rf /usr/share/dotnet /usr/local/lib/android /opt/ghc \
+            /opt/hostedtoolcache /usr/local/share/boost /usr/local/.ghcup
+          sudo docker image prune --all --force
+          df -h /
+
+      - name: Read the backend configuration
+        id: config
+        env:
+          BACKEND: ${{ matrix.backend }}
+          OWNER: ${{ github.repository_owner }}
+          TAGS: ${{ inputs.tags }}
+        run: |
+          set -euo pipefail
+          jq -r --arg b "${BACKEND}" '.[$b] | to_entries[] | "\(.key)=\(.value)"' \
+            docker/backends.json >> "${GITHUB_OUTPUT}"
+          image="ghcr.io/${OWNER,,}/ginkgo-${BACKEND}"
+          echo "image=${image}" >> "${GITHUB_OUTPUT}"
+          {
+            echo "tags<<EOF"
+            for tag in ${TAGS}; do echo "${image}:${tag}"; done
+            echo "EOF"
+          } >> "${GITHUB_OUTPUT}"
+
+      - uses: docker/setup-buildx-action@v4
+
+      - name: Log in to ghcr.io
+        if: inputs.push
+        uses: docker/login-action@v4
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build the image
+        uses: docker/build-push-action@v7
+        with:
+          context: .
+          file: docker/Dockerfile
+          load: true
+          tags: ${{ steps.config.outputs.tags }}
+          build-args: |
+            BASE_IMAGE=${{ steps.config.outputs.base_image }}
+            BACKEND=${{ matrix.backend }}
+            WITH_MPI=${{ steps.config.outputs.with_mpi }}
+            BUILD_JOBS=${{ steps.config.outputs.build_jobs }}
+            GINKGO_REF=${{ inputs.ref }}
+            GINKGO_VERSION=${{ inputs.version }}
+          cache-from: type=gha,scope=ginkgo-${{ matrix.backend }}
+          cache-to: type=gha,mode=min,scope=ginkgo-${{ matrix.backend }}
+
+      - name: Run the smoke test
+        env:
+          IMAGE: ${{ steps.config.outputs.image }}
+          TAG: ${{ inputs.tags }}
+          CXX_COMPILER: ${{ matrix.backend == 'sycl' && 'icpx' || 'c++' }}
+        run: |
+          set -euo pipefail
+          tag="${TAG%% *}"
+          docker run --rm -v "${PWD}/conda/recipe/smoke:/smoke:ro" "${IMAGE}:${tag}" bash -c "
+            set -e
+            cat /opt/ginkgo/share/ginkgo-revision
+            cmake -S /smoke -B /tmp/smoke -G Ninja -DCMAKE_CXX_COMPILER=${CXX_COMPILER}
+            cmake --build /tmp/smoke
+            /tmp/smoke/ginkgo-smoke"
+
+      - name: Push the image
+        if: inputs.push
+        env:
+          TAGS: ${{ steps.config.outputs.tags }}
+        run: |
+          set -euo pipefail
+          for tag in ${TAGS}; do
+            docker push "${tag}"
+          done

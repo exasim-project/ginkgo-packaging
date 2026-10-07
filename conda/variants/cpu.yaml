@@ -1,0 +1,7 @@
+# Reference + OpenMP kernels, with and without MPI.
+ginkgo_backend:
+  - cpu
+mpi:
+  - nompi
+  - if: unix
+    then: openmpi

@@ -1,0 +1,5 @@
+output/
+.pixi/
+render.err
+pixi/example/pixi.lock
+pixi/example/build/

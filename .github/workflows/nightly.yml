@@ -1,0 +1,99 @@
+name: nightly
+
+# Builds Ginkgo's develop branch every night: conda packages go to the
+# "nightly" label on anaconda.org as <next version>.dev<YYYYMMDD>, Docker
+# images are tagged "nightly" and "nightly-<YYYYMMDD>". Scheduled runs are
+# skipped when develop has not changed in the last day.
+on:
+  schedule:
+    - cron: "17 2 * * *"
+  workflow_dispatch:
+    inputs:
+      ref:
+        description: Ginkgo branch or commit to build
+        default: develop
+      upload:
+        description: Upload the conda packages and push the Docker images
+        type: boolean
+        default: true
+
+permissions:
+  contents: read
+
+concurrency:
+  group: nightly
+  cancel-in-progress: true
+
+jobs:
+  plan:
+    runs-on: ubuntu-latest
+    outputs:
+      sha: ${{ steps.plan.outputs.sha }}
+      version: ${{ steps.plan.outputs.version }}
+      date: ${{ steps.plan.outputs.date }}
+      build: ${{ steps.plan.outputs.build }}
+      upload: ${{ steps.plan.outputs.upload }}
+    steps:
+      - id: plan
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REF: ${{ inputs.ref || 'develop' }}
+          SCHEDULED: ${{ github.event_name == 'schedule' }}
+          UPLOAD: ${{ github.event_name == 'schedule' || inputs.upload }}
+        run: |
+          set -euo pipefail
+          repo=ginkgo-project/ginkgo
+          sha=$(gh api "repos/${repo}/commits/${REF}" --jq .sha)
+          committed=$(gh api "repos/${repo}/commits/${sha}" --jq .commit.committer.date)
+          # The next release version as declared on develop, e.g. 2.0.0.
+          base=$(gh api "repos/${repo}/contents/CMakeLists.txt?ref=${sha}" --jq .content \
+            | base64 -d | sed -n 's/^ *VERSION \([0-9][0-9.]*\)$/\1/p' | head -1)
+          date=$(date -u +%Y%m%d)
+          build=true
+          if [ "${SCHEDULED}" = "true" ] \
+              && [ "$(date -u -d "${committed}" +%s)" -lt "$(date -u -d '25 hours ago' +%s)" ]; then
+            echo "::notice::${REF} unchanged since ${committed}, skipping the nightly"
+            build=false
+          fi
+          echo "Building ${repo}@${sha} (${committed}) as ${base}.dev${date}"
+          {
+            echo "sha=${sha}"
+            echo "version=${base}.dev${date}"
+            echo "date=${date}"
+            echo "build=${build}"
+            echo "upload=${UPLOAD}"
+          } >> "${GITHUB_OUTPUT}"
+
+  conda:
+    needs: plan
+    if: needs.plan.outputs.build == 'true'
+    uses: ./.github/workflows/conda.yml
+    with:
+      ref: ${{ needs.plan.outputs.sha }}
+      version: ${{ needs.plan.outputs.version }}
+      # The experimental ROCm package is only ever published as a nightly.
+      backends: cpu,cuda,sycl,rocm
+      label: nightly
+      upload: ${{ needs.plan.outputs.upload == 'true' }}
+    secrets: inherit
+
+  docker:
+    needs: plan
+    if: needs.plan.outputs.build == 'true'
+    permissions:
+      contents: read
+      packages: write
+    uses: ./.github/workflows/docker.yml
+    with:
+      ref: ${{ needs.plan.outputs.sha }}
+      version: ${{ needs.plan.outputs.version }}
+      tags: nightly nightly-${{ needs.plan.outputs.date }}
+      push: ${{ needs.plan.outputs.upload == 'true' }}
+
+  pixi:
+    needs: [plan, conda]
+    if: needs.plan.outputs.build == 'true' && needs.plan.outputs.upload == 'true'
+    uses: ./.github/workflows/pixi.yml
+    with:
+      version: ${{ needs.plan.outputs.version }}
+      label: nightly

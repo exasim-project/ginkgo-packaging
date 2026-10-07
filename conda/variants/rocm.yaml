@@ -1,0 +1,10 @@
+# EXPERIMENTAL. Reference + OpenMP + HIP kernels for AMD GPUs. conda-forge has
+# no hipBLAS/hipSPARSE/hipRAND/rocThrust, so this builds against a system ROCm
+# in /opt/rocm (the rocm/dev-ubuntu-24.04 image in CI) and the resulting
+# package needs the same ROCm installed at runtime. Prefer the Docker image.
+ginkgo_backend:
+  - rocm
+mpi:
+  - nompi
+hip_architectures:
+  - "gfx908;gfx90a;gfx942;gfx1030;gfx1100"

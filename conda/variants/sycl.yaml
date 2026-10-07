@@ -1,0 +1,12 @@
+# Reference + OpenMP + SYCL kernels built with Intel's oneAPI DPC++ compiler
+# from conda-forge. mkl-devel-dpcpp is on conda-forge from 2025.2 onwards.
+ginkgo_backend:
+  - sycl
+mpi:
+  - nompi
+dpcpp_compiler:
+  - dpcpp
+dpcpp_compiler_version:
+  - "2025.2"
+mkl_version:
+  - "2025.2"
