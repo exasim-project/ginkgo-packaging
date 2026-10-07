@@ -1,14 +1,16 @@
 @echo on
 :: Configures, builds and installs Ginkgo into %LIBRARY_PREFIX%. Windows only
 :: gets the CPU backend without MPI, see recipe.yaml. OpenMP is left to
-:: Ginkgo's autodetection, which depends on the MSVC OpenMP level. Like
-:: Ginkgo's own MSVC CI, half and bfloat16 are disabled: with them the
-:: ginkgo_core import library exceeds MSVC's limit of 65535 objects (LNK1189).
+:: Ginkgo's autodetection, which depends on the MSVC OpenMP level.
+:: Static libraries: as a DLL, ginkgo_core exports more symbols than an MSVC
+:: import library can hold (LNK1189: library limit of 65535 objects) in this
+:: environment. Ginkgo disables its export-all-symbols mechanism for static
+:: builds, and find_package(Ginkgo) works the same for consumers.
 
 cmake -S . -B build -G Ninja %CMAKE_ARGS% ^
     -DCMAKE_BUILD_TYPE=Release ^
     -DCMAKE_INSTALL_PREFIX="%LIBRARY_PREFIX%" ^
-    -DBUILD_SHARED_LIBS=ON ^
+    -DBUILD_SHARED_LIBS=OFF ^
     -DGINKGO_BUILD_TESTS=OFF ^
     -DGINKGO_BUILD_EXAMPLES=OFF ^
     -DGINKGO_BUILD_BENCHMARKS=OFF ^
@@ -19,9 +21,7 @@ cmake -S . -B build -G Ninja %CMAKE_ARGS% ^
     -DGINKGO_BUILD_PAPI_SDE=OFF ^
     -DGINKGO_BUILD_CUDA=OFF ^
     -DGINKGO_BUILD_HIP=OFF ^
-    -DGINKGO_BUILD_SYCL=OFF ^
-    -DGINKGO_ENABLE_HALF=OFF ^
-    -DGINKGO_ENABLE_BFLOAT16=OFF
+    -DGINKGO_BUILD_SYCL=OFF
 if errorlevel 1 exit 1
 
 cmake --build build

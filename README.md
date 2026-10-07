@@ -11,7 +11,7 @@ release, and nightly builds of `develop`.
 |---|---|---|---|---|
 | conda `linux-64` | nompi, openmpi, mpich | nompi, openmpi, mpich | experimental, nightly only | nompi, mpich |
 | conda `osx-arm64`, `osx-64` | nompi, openmpi, mpich | – | – | – |
-| conda `win-64` | nompi | – | – | – |
+| conda `win-64` | nompi (static libraries) | – | – | – |
 | Docker `linux/amd64` | `ginkgo-cpu` | `ginkgo-cuda` | `ginkgo-rocm` | `ginkgo-sycl` |
 
 Toolchains: CUDA 12.9 (the newest that Ginkgo 1.10 supports), ROCm 6.4.4,

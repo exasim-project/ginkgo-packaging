@@ -21,6 +21,10 @@ on:
         description: Comma separated list of cpu, cuda, sycl, rocm
         type: string
         default: cpu,cuda,sycl
+      platforms:
+        description: Comma separated conda platforms to build, empty for all
+        type: string
+        default: ""
       channel:
         description: prefix.dev channel to upload to
         type: string
@@ -48,6 +52,9 @@ on:
       backends:
         description: Comma separated list of cpu, cuda, sycl, rocm (rocm is experimental)
         default: cpu,cuda,sycl
+      platforms:
+        description: Comma separated conda platforms (linux-64, osx-arm64, osx-64, win-64), empty for all
+        default: ""
       channel:
         description: prefix.dev channel to upload to (default the PREFIX_CHANNEL variable)
         default: ""
@@ -76,6 +83,7 @@ jobs:
       - id: matrix
         env:
           BACKENDS: ${{ inputs.backends }}
+          PLATFORMS: ${{ inputs.platforms }}
         run: |
           set -euo pipefail
           all='[
@@ -88,8 +96,10 @@ jobs:
             {"backend": "rocm", "platform": "linux-64",  "os": "ubuntu-24.04"}
           ]'
           wanted=$(jq -cn --arg b "${BACKENDS}" '$b | gsub(" "; "") | split(",")')
-          include=$(jq -c --argjson wanted "${wanted}" \
-            '[.[] | select(.backend as $b | $wanted | index($b))]' <<< "${all}")
+          platforms=$(jq -cn --arg p "${PLATFORMS}" '$p | gsub(" "; "") | split(",") | map(select(. != ""))')
+          include=$(jq -c --argjson wanted "${wanted}" --argjson platforms "${platforms}" \
+            '[.[] | select(.backend as $b | $wanted | index($b))
+                  | select(($platforms | length) == 0 or (.platform as $p | $platforms | index($p)))]' <<< "${all}")
           if [ "$(jq length <<< "${include}")" -eq 0 ]; then
             echo "::error::no known backend in '${BACKENDS}'"
             exit 1

@@ -121,10 +121,13 @@ tests:
       include:
         - ginkgo/ginkgo.hpp
         - ginkgo/config.hpp
+      # Windows builds are static (see build.bat), so there are no DLLs.
       lib:
-        - ginkgo
-        - ginkgo_reference
-        - ginkgo_device
+        - if: unix
+          then:
+            - ginkgo
+            - ginkgo_reference
+            - ginkgo_device
         - if: ginkgo_backend == "cuda"
           then: ginkgo_cuda
         - if: ginkgo_backend == "rocm"
@@ -133,7 +136,11 @@ tests:
           then: ginkgo_dpcpp
       files:
         - if: win
-          then: Library/lib/cmake/Ginkgo/GinkgoConfig.cmake
+          then:
+            - Library/lib/cmake/Ginkgo/GinkgoConfig.cmake
+            - Library/lib/ginkgo.lib
+            - Library/lib/ginkgo_reference.lib
+            - Library/lib/ginkgo_device.lib
           else: lib/cmake/Ginkgo/GinkgoConfig.cmake
   # Builds a small program against the installed package with
   # find_package(Ginkgo) and runs it on the reference executor, which works
