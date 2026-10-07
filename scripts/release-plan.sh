@@ -5,7 +5,7 @@
 #   BUILD_NUMBER      conda build number to look for (default 0)
 #   CONDA_BACKENDS    comma separated conda backends to consider
 #   DOCKER_BACKENDS   comma separated Docker backends to consider
-#   ANACONDA_OWNER    anaconda.org owner of the ginkgo package
+#   PREFIX_CHANNEL    prefix.dev channel the releases are published to
 #   IMAGE_PREFIX      image name prefix, e.g. ghcr.io/ginkgo-project/ginkgo
 #   FORCE             "true" builds everything regardless of what exists
 # Writes to $GITHUB_OUTPUT (or stdout):
@@ -17,7 +17,7 @@ set -euo pipefail
 
 : "${VERSIONS:?}"
 build_number="${BUILD_NUMBER:-0}"
-owner="${ANACONDA_OWNER:-ginkgo-project}"
+channel="${PREFIX_CHANNEL:?set the PREFIX_CHANNEL repository variable}"
 image_prefix="${IMAGE_PREFIX:-ghcr.io/ginkgo-project/ginkgo}"
 force="${FORCE:-false}"
 out="${GITHUB_OUTPUT:-/dev/stdout}"
@@ -58,8 +58,16 @@ for v in ${versions}; do
     fi
 done
 
-# Every file of the package on anaconda.org; empty if it was never uploaded.
-files=$(curl -fsSL "https://api.anaconda.org/package/${owner}/ginkgo/files" 2> /dev/null || echo '[]')
+# Every ginkgo build in the channel as {subdir, version, build, build_number},
+# read from the public repodata; empty for a subdir that has none.
+files='[]'
+for subdir in linux-64 osx-arm64 osx-64 win-64; do
+    repodata=$(curl -fsSL "https://prefix.dev/${channel}/${subdir}/repodata.json" 2> /dev/null || echo '{}')
+    files=$(jq -c --arg s "${subdir}" --argjson acc "${files}" \
+        '$acc + [((.packages // {}) + (.["packages.conda"] // {}))[]
+            | select(.name == "ginkgo")
+            | {subdir: $s, version, build, build_number}]' <<< "${repodata}")
+done
 
 conda='[]'
 docker='[]'
@@ -69,9 +77,9 @@ for v in ${versions}; do
         for subdir in $(subdirs_for "${backend}"); do
             count=$(jq --arg v "${v}" --arg s "${subdir}" --arg b "${backend}_" \
                 --argjson n "${build_number}" \
-                '[.[] | select(.version == $v and .attrs.subdir == $s
-                    and .attrs.build_number == $n
-                    and (.attrs.build | startswith($b)))] | length' <<< "${files}")
+                '[.[] | select(.version == $v and .subdir == $s
+                    and .build_number == $n
+                    and (.build | startswith($b)))] | length' <<< "${files}")
             if [[ "${force}" == "true" || "${count}" -lt "$(expected_builds "${backend}" "${subdir}")" ]]; then
                 echo "conda ${v} ${subdir}/${backend} (build ${build_number}): missing" >&2
                 missing+=("${backend}")

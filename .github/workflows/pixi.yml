@@ -10,19 +10,19 @@ on:
         description: Ginkgo package version to test
         type: string
         required: true
-      label:
-        description: anaconda.org label the packages were uploaded to
+      channel:
+        description: prefix.dev channel the packages were uploaded to
         type: string
-        default: main
+        required: true
   workflow_dispatch:
     inputs:
       version:
         description: Ginkgo package version to test
         required: true
         default: 1.11.0
-      label:
-        description: anaconda.org label the packages were uploaded to
-        default: main
+      channel:
+        description: prefix.dev channel the packages were uploaded to
+        required: true
 
 permissions:
   contents: read
@@ -58,18 +58,14 @@ jobs:
       - name: Point the workspace at the tested channel and version
         shell: bash
         env:
-          OWNER: ${{ vars.ANACONDA_OWNER || 'ginkgo-project' }}
-          LABEL: ${{ inputs.label }}
+          CHANNEL: ${{ inputs.channel }}
           VERSION: ${{ inputs.version }}
         run: |
           set -euo pipefail
-          channel="https://conda.anaconda.org/${OWNER}"
-          if [ "${LABEL}" != "main" ]; then
-            channel="${channel}/label/${LABEL}"
-          fi
+          channel="https://prefix.dev/${CHANNEL}"
           # Replace the default channel and pin the version under test.
           sed -i.bak \
-            -e "s|https://conda.anaconda.org/ginkgo-project|${channel}|" \
+            -e "s|https://prefix.dev/ginkgo\"|${channel}\"|" \
             -e "s|ginkgo = { version = \"\*\"|ginkgo = { version = \"==${VERSION}\"|" \
             pixi.toml
           rm pixi.toml.bak

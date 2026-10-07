@@ -1,7 +1,9 @@
 name: nightly
 
 # Builds Ginkgo's develop branch every night: conda packages go to the
-# "nightly" label on anaconda.org as <next version>.dev<YYYYMMDD>, Docker
+# prefix.dev channel in the PREFIX_NIGHTLY_CHANNEL repository variable as
+# <next version>.dev<YYYYMMDD> (kept apart from the release channel, because
+# these versions sort above the latest release), Docker
 # images are tagged "nightly" and "nightly-<YYYYMMDD>". Scheduled runs are
 # skipped when develop has not changed in the last day.
 on:
@@ -67,13 +69,17 @@ jobs:
   conda:
     needs: plan
     if: needs.plan.outputs.build == 'true'
+    permissions:
+      contents: read
+      id-token: write
     uses: ./.github/workflows/conda.yml
     with:
       ref: ${{ needs.plan.outputs.sha }}
       version: ${{ needs.plan.outputs.version }}
       # The experimental ROCm package is only ever published as a nightly.
       backends: cpu,cuda,sycl,rocm
-      label: nightly
+      channel: ${{ vars.PREFIX_NIGHTLY_CHANNEL }}
+      overwrite: true
       upload: ${{ needs.plan.outputs.upload == 'true' }}
     secrets: inherit
 
@@ -96,4 +102,4 @@ jobs:
     uses: ./.github/workflows/pixi.yml
     with:
       version: ${{ needs.plan.outputs.version }}
-      label: nightly
+      channel: ${{ vars.PREFIX_NIGHTLY_CHANNEL }}

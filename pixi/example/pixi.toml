@@ -5,9 +5,10 @@
 # The pixi.yml workflow runs this against freshly published packages.
 [workspace]
 name = "ginkgo-example"
-# Nightlies live under the "nightly" label:
-#   pixi workspace channel add --prepend https://conda.anaconda.org/ginkgo-project/label/nightly
-channels = ["https://conda.anaconda.org/ginkgo-project", "conda-forge"]
+# Releases come from the prefix.dev release channel; for nightlies use the
+# nightly channel instead (pixi.yml swaps it in CI):
+#   pixi workspace channel add --prepend https://prefix.dev/<nightly channel>
+channels = ["https://prefix.dev/ginkgo", "conda-forge"]
 platforms = ["linux-64", "osx-arm64", "osx-64", "win-64"]
 
 [dependencies]

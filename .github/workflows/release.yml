@@ -1,12 +1,12 @@
 name: release
 
-# Builds and publishes released Ginkgo versions: conda packages to the "main"
-# label on anaconda.org and Docker images tagged with the version. The highest
+# Builds and publishes released Ginkgo versions: conda packages to the
+# prefix.dev channel in the PREFIX_CHANNEL repository variable and Docker images tagged with the version. The highest
 # version in the list also gets the Docker "latest" tag.
 #
 # Only what is not published yet gets built: for every version and backend the
 # plan job looks for the conda packages (same version and build number, all
-# platforms) on anaconda.org and for the image tag on ghcr.io, see
+# platforms) in the prefix.dev channel and for the image tag on ghcr.io, see
 # scripts/release-plan.sh. Bump build_number or set force to rebuild.
 #
 # Run it by hand to (re)build any set of releases, e.g. the backfill of
@@ -71,7 +71,7 @@ jobs:
           BUILD_NUMBER: ${{ inputs.build_number || '0' }}
           CONDA_BACKENDS: ${{ inputs.conda_backends || 'cpu,cuda,sycl' }}
           DOCKER_BACKENDS: ${{ inputs.docker_backends || 'cpu,cuda,rocm,sycl' }}
-          ANACONDA_OWNER: ${{ vars.ANACONDA_OWNER || 'ginkgo-project' }}
+          PREFIX_CHANNEL: ${{ vars.PREFIX_CHANNEL }}
           IMAGE_PREFIX: ghcr.io/${{ github.repository_owner }}/ginkgo
           FORCE: ${{ inputs.force || false }}
         run: |
@@ -89,14 +89,16 @@ jobs:
       fail-fast: false
       matrix:
         include: ${{ fromJSON(needs.plan.outputs.conda) }}
+    permissions:
+      contents: read
+      id-token: write
     uses: ./.github/workflows/conda.yml
     with:
       ref: v${{ matrix.version }}
       version: ${{ matrix.version }}
       build_number: ${{ inputs.build_number || '0' }}
       backends: ${{ matrix.backends }}
-      # Release candidates never land on the default label.
-      label: ${{ contains(matrix.version, 'rc') && 'dev' || 'main' }}
+      channel: ${{ vars.PREFIX_CHANNEL }}
       upload: ${{ needs.plan.outputs.upload == 'true' }}
     secrets: inherit
 
@@ -130,4 +132,4 @@ jobs:
     uses: ./.github/workflows/pixi.yml
     with:
       version: ${{ matrix.version }}
-      label: ${{ contains(matrix.version, 'rc') && 'dev' || 'main' }}
+      channel: ${{ vars.PREFIX_CHANNEL }}

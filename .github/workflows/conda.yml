@@ -1,7 +1,7 @@
 name: conda
 
 # Builds the Ginkgo conda packages for one Ginkgo ref and optionally uploads
-# them to anaconda.org. Called by release.yml and nightly.yml, and can be run
+# them to a prefix.dev channel. Called by release.yml and nightly.yml, and can be run
 # by hand to (re)build a single version.
 on:
   workflow_call:
@@ -21,10 +21,14 @@ on:
         description: Comma separated list of cpu, cuda, sycl, rocm
         type: string
         default: cpu,cuda,sycl
-      label:
-        description: anaconda.org label to upload to
+      channel:
+        description: prefix.dev channel to upload to
         type: string
-        default: dev
+        default: ""
+      overwrite:
+        description: Replace packages that already exist in the channel
+        type: boolean
+        default: false
       upload:
         type: boolean
         default: false
@@ -44,11 +48,15 @@ on:
       backends:
         description: Comma separated list of cpu, cuda, sycl, rocm (rocm is experimental)
         default: cpu,cuda,sycl
-      label:
-        description: anaconda.org label to upload to
-        default: dev
+      channel:
+        description: prefix.dev channel to upload to
+        default: ""
+      overwrite:
+        description: Replace packages that already exist in the channel
+        type: boolean
+        default: false
       upload:
-        description: Upload the built packages to anaconda.org
+        description: Upload the built packages to prefix.dev
         type: boolean
         default: false
 
@@ -134,12 +142,16 @@ jobs:
             --channel conda-forge
 
   publish:
-    name: publish to anaconda.org
+    name: publish to prefix.dev
     needs: build
     if: inputs.upload
     runs-on: ubuntu-latest
-    # Holds the ANACONDA_API_KEY secret, see README.md.
-    environment: anaconda
+    # Holds the optional PREFIX_API_KEY secret, see README.md.
+    environment: prefix
+    permissions:
+      contents: read
+      # Trusted publishing to prefix.dev when no API key is configured.
+      id-token: write
     steps:
       - name: Collect the built packages
         uses: actions/download-artifact@v8
@@ -154,16 +166,20 @@ jobs:
           rattler-build-version: ${{ env.RATTLER_BUILD_VERSION }}
           setup-only: true
 
-      - name: Upload to anaconda.org
+      - name: Upload to prefix.dev
         env:
-          ANACONDA_OWNER: ${{ vars.ANACONDA_OWNER || 'ginkgo-project' }}
-          ANACONDA_API_KEY: ${{ secrets.ANACONDA_API_KEY }}
-          ANACONDA_CHANNEL: ${{ inputs.label }}
+          PREFIX_CHANNEL: ${{ inputs.channel }}
+          PREFIX_API_KEY: ${{ secrets.PREFIX_API_KEY }}
+          OVERWRITE: ${{ inputs.overwrite }}
         run: |
           set -euo pipefail
-          if [ -z "${ANACONDA_API_KEY}" ]; then
-            echo "::error::The ANACONDA_API_KEY secret is not set"
+          if [ -z "${PREFIX_CHANNEL}" ]; then
+            echo "::error::No prefix.dev channel given, set the PREFIX_CHANNEL / PREFIX_NIGHTLY_CHANNEL repository variables"
             exit 1
+          fi
+          if [ -z "${PREFIX_API_KEY}" ]; then
+            unset PREFIX_API_KEY
+            echo "No PREFIX_API_KEY secret, using trusted publishing"
           fi
           mapfile -t files < <(find packages -type f \( -name '*.conda' -o -name '*.tar.bz2' \) | sort)
           if [ "${#files[@]}" -eq 0 ]; then
@@ -173,8 +189,9 @@ jobs:
           printf 'uploading %s\n' "${files[@]}"
           # Nightlies may be rebuilt on the same day and replace the existing
           # files; released packages are never overwritten.
-          force=()
-          if [ "${ANACONDA_CHANNEL}" = "nightly" ]; then
-            force=(--force)
+          if [ "${OVERWRITE}" = "true" ]; then
+            mode=--force
+          else
+            mode=--skip-existing
           fi
-          rattler-build upload anaconda "${force[@]}" "${files[@]}"
+          rattler-build upload prefix "${mode}" "${files[@]}"
