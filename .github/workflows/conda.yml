@@ -86,13 +86,19 @@ jobs:
           PLATFORMS: ${{ inputs.platforms }}
         run: |
           set -euo pipefail
+          # GPU builds take hours each, so every MPI variant gets its own job
+          # (keep the mpi values in sync with conda/variants/<backend>.yaml);
+          # the CPU jobs build all their variants in one go.
           all='[
             {"backend": "cpu",  "platform": "linux-64",  "os": "ubuntu-latest"},
             {"backend": "cpu",  "platform": "osx-arm64", "os": "macos-latest"},
             {"backend": "cpu",  "platform": "osx-64",    "os": "macos-26-intel"},
             {"backend": "cpu",  "platform": "win-64",    "os": "windows-2022"},
-            {"backend": "cuda", "platform": "linux-64",  "os": "ubuntu-latest"},
-            {"backend": "sycl", "platform": "linux-64",  "os": "ubuntu-latest"},
+            {"backend": "cuda", "platform": "linux-64",  "os": "ubuntu-latest", "mpi": "nompi"},
+            {"backend": "cuda", "platform": "linux-64",  "os": "ubuntu-latest", "mpi": "openmpi"},
+            {"backend": "cuda", "platform": "linux-64",  "os": "ubuntu-latest", "mpi": "mpich"},
+            {"backend": "sycl", "platform": "linux-64",  "os": "ubuntu-latest", "mpi": "nompi"},
+            {"backend": "sycl", "platform": "linux-64",  "os": "ubuntu-latest", "mpi": "mpich"},
             {"backend": "rocm", "platform": "linux-64",  "os": "ubuntu-24.04"}
           ]'
           wanted=$(jq -cn --arg b "${BACKENDS}" '$b | gsub(" "; "") | split(",")')
@@ -107,7 +113,7 @@ jobs:
           echo "include=${include}" >> "${GITHUB_OUTPUT}"
 
   build:
-    name: ${{ matrix.platform }}/${{ matrix.backend }}
+    name: ${{ matrix.platform }}/${{ matrix.backend }}${{ matrix.mpi && format('/{0}', matrix.mpi) || '' }}
     needs: matrix
     runs-on: ${{ matrix.os }}
     timeout-minutes: 360
@@ -139,15 +145,23 @@ jobs:
         if: matrix.backend == 'rocm'
         run: scripts/install-rocm.sh "${ROCM_VERSION}"
 
+      - name: Restrict the build to one MPI variant
+        if: matrix.mpi
+        shell: bash
+        env:
+          MPI: ${{ matrix.mpi }}
+        run: printf 'mpi:\n  - %s\n' "${MPI}" > mpi-variant.yaml
+
       - name: Build the package
         uses: prefix-dev/rattler-build-action@v0.2.39
         with:
           rattler-build-version: ${{ env.RATTLER_BUILD_VERSION }}
           recipe-path: conda/recipe/recipe.yaml
-          artifact-name: conda-${{ inputs.version }}-${{ matrix.platform }}-${{ matrix.backend }}
+          artifact-name: conda-${{ inputs.version }}-${{ matrix.platform }}-${{ matrix.backend }}${{ matrix.mpi && format('-{0}', matrix.mpi) || '' }}
           build-args: >-
             --variant-config conda/variants/base.yaml
             --variant-config conda/variants/${{ matrix.backend }}.yaml
+            ${{ matrix.mpi && '--variant-config mpi-variant.yaml' || '' }}
             --target-platform ${{ matrix.platform }}
             --channel conda-forge
 
