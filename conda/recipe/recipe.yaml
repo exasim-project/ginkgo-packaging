@@ -105,8 +105,11 @@ requirements:
         - mkl-devel-dpcpp ${{ mkl_version }}.*
         # MKL's SYCL target needs TBBConfig.cmake.
         - tbb-devel
-        - onedpl-devel
-        - intel-sycl-rt
+        # The SYCL headers come from the host's intel-sycl-rt (conda puts
+        # $PREFIX/include first), so it must match the compiler exactly; a
+        # newer one uses builtins the older icpx does not know.
+        - onedpl-devel ${{ onedpl_version }}.*
+        - intel-sycl-rt ${{ dpcpp_compiler_version }}.*
   run:
     - if: ginkgo_backend == "cuda"
       then: __cuda

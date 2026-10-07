@@ -10,3 +10,6 @@ dpcpp_compiler_version:
   - "2025.2"
 mkl_version:
   - "2025.2"
+# The oneDPL release that ships with oneAPI 2025.2.
+onedpl_version:
+  - "2022.9"
