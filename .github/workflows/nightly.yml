@@ -4,8 +4,11 @@ name: nightly
 # prefix.dev channel in PREFIX_CHANNEL as <next version>.dev<YYYYMMDD>, next to
 # the releases. The recipe down-prioritizes them so solvers only pick them when
 # asked for explicitly; cleanup.yml removes old ones. Docker
-# images are tagged "nightly" and "nightly-<YYYYMMDD>". Scheduled runs are
-# skipped when develop has not changed in the last day.
+# images are tagged "nightly" and "nightly-<YYYYMMDD>".
+#
+# Scheduled runs only build when develop moved since the last nightly that
+# built: each building run records the Ginkgo commit as a "nightly-build"
+# annotation, see scripts/nightly-last-sha.sh. Manual runs always build.
 on:
   schedule:
     - cron: "17 2 * * *"
@@ -29,6 +32,11 @@ concurrency:
 jobs:
   plan:
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      # Read previous nightly runs and their annotations.
+      actions: read
+      checks: read
     outputs:
       sha: ${{ steps.plan.outputs.sha }}
       version: ${{ steps.plan.outputs.version }}
@@ -36,6 +44,8 @@ jobs:
       build: ${{ steps.plan.outputs.build }}
       upload: ${{ steps.plan.outputs.upload }}
     steps:
+      - uses: actions/checkout@v7
+
       - id: plan
         env:
           GH_TOKEN: ${{ github.token }}
@@ -52,12 +62,20 @@ jobs:
             | base64 -d | sed -n 's/^ *VERSION \([0-9][0-9.]*\)$/\1/p' | head -1)
           date=$(date -u +%Y%m%d)
           build=true
-          if [ "${SCHEDULED}" = "true" ] \
-              && [ "$(date -u -d "${committed}" +%s)" -lt "$(date -u -d '25 hours ago' +%s)" ]; then
-            echo "::notice::${REF} unchanged since ${committed}, skipping the nightly"
-            build=false
+          if [ "${SCHEDULED}" = "true" ]; then
+            last=$(scripts/nightly-last-sha.sh)
+            if [ "${last}" = "${sha}" ]; then
+              echo "::notice::${REF} is still at ${sha}, which the last nightly built, skipping the nightly"
+              build=false
+            else
+              echo "Last nightly built ${last:-nothing}, ${REF} is now at ${sha}"
+            fi
           fi
-          echo "Building ${repo}@${sha} (${committed}) as ${base}.dev${date}"
+          if [ "${build}" = "true" ]; then
+            # Read back by the next scheduled run.
+            echo "::notice title=nightly-build::${sha}"
+            echo "Building ${repo}@${sha} (${committed}) as ${base}.dev${date}"
+          fi
           {
             echo "sha=${sha}"
             echo "version=${base}.dev${date}"

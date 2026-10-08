@@ -23,6 +23,7 @@ ${sudo} apt-get update
 ${sudo} apt-get install -y --no-install-recommends \
     hipcc rocm-llvm rocm-cmake rocm-device-libs hip-dev hip-runtime-amd \
     hipblas-dev hipsparse-dev hiprand-dev hipfft-dev \
+    rocblas-dev rocsparse-dev rocrand-dev rocfft-dev \
     rocthrust-dev rocprim-dev hipcub-dev roctracer-dev
 
 /opt/rocm/bin/hipconfig --version

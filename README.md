@@ -105,7 +105,7 @@ scripts/                     render-all, release-plan, install-rocm, docker-buil
 | workflow | trigger | does |
 |---|---|---|
 | `release.yml` | manual (`versions`, default `1.10.0 1.11.0`), `repository_dispatch: ginkgo-release` | builds and publishes **only what is missing** for the given releases, then tests with pixi |
-| `nightly.yml` | daily 02:17 UTC, manual | builds `develop` (skipped if unchanged for a day) into the shared channel, tags `nightly*` |
+| `nightly.yml` | daily 02:17 UTC, manual | builds `develop` into the shared channel, only if develop moved since the last nightly (manual runs always build), tags `nightly*` |
 | `cleanup.yml` | daily 14:17 UTC, manual (dry run by default) | deletes all but the newest 14 nightly versions; never touches release versions |
 | `conda.yml` | reusable, manual | rattler-build per platform and backend, uploads with `rattler-build upload prefix` |
 | `docker.yml` | reusable, manual | builds one image per backend, runs the smoke test in it, pushes to ghcr.io |
