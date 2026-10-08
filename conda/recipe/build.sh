@@ -57,6 +57,10 @@ case "${GINKGO_BACKEND}" in
             -DCMAKE_HIP_COMPILER="${rocm_path}/llvm/bin/clang++"
             -DCMAKE_HIP_ARCHITECTURES="${GINKGO_HIP_ARCHITECTURES}"
             -DCMAKE_PREFIX_PATH="${rocm_path};${PREFIX}"
+            # Keep the system ROCm in the RPATH of libginkgo_hip (allowed by
+            # rpath_allowlist in recipe.yaml), so it is found at link and run
+            # time without LD_LIBRARY_PATH.
+            -DGINKGO_INSTALL_RPATH_DEPENDENCIES=ON
         )
         ;;
     sycl)

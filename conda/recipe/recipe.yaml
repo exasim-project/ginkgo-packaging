@@ -50,6 +50,11 @@ build:
   dynamic_linking:
     # The experimental ROCm build links against the system ROCm in /opt/rocm,
     # because hipBLAS, hipSPARSE and hipRAND are not packaged on conda-forge.
+    rpath_allowlist:
+      - if: ginkgo_backend == "rocm"
+        then:
+          - /opt/rocm*
+          - /opt/rocm*/**
     missing_dso_allowlist:
       - if: ginkgo_backend == "rocm"
         then:
