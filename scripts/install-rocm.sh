@@ -21,7 +21,7 @@ printf 'Package: *\nPin: release o=repo.radeon.com\nPin-Priority: 600\n' \
 
 ${sudo} apt-get update
 ${sudo} apt-get install -y --no-install-recommends \
-    hipcc rocm-cmake rocm-device-libs \
+    hipcc rocm-llvm rocm-cmake rocm-device-libs hip-dev hip-runtime-amd \
     hipblas-dev hipsparse-dev hiprand-dev hipfft-dev \
     rocthrust-dev rocprim-dev hipcub-dev roctracer-dev
 

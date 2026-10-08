@@ -71,6 +71,31 @@ jobs:
           rm pixi.toml.bak
           grep -nE "channels|ginkgo =" pixi.toml
 
+      # Uploads take a while to show up in the channel index, and pixi solves
+      # every platform of an environment, so wait until all of them see it.
+      - name: Wait for the packages to be indexed
+        shell: bash
+        env:
+          CHANNEL: ${{ inputs.channel }}
+          VERSION: ${{ inputs.version }}
+        run: |
+          set -uo pipefail
+          for attempt in $(seq 1 45); do
+            missing=""
+            for platform in linux-64 osx-arm64 osx-64 win-64; do
+              pixi search "ginkgo==${VERSION}" --channel "https://prefix.dev/${CHANNEL}" \
+                --platform "${platform}" > /dev/null 2>&1 || missing+=" ${platform}"
+            done
+            if [ -z "${missing}" ]; then
+              echo "ginkgo ${VERSION} is indexed on all platforms"
+              exit 0
+            fi
+            echo "attempt ${attempt}: not yet indexed on${missing}"
+            sleep 60
+          done
+          echo "::error::ginkgo ${VERSION} did not show up in ${CHANNEL} within 45 minutes"
+          exit 1
+
       - name: Run the smoke test
         run: pixi run --environment ${{ matrix.env }} smoke
 
