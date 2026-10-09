@@ -64,6 +64,12 @@ if [[ "${WITH_MPI:-ON}" == "ON" && "${BACKEND:-cpu}" != "cpu" ]]; then
     cmake_args+=(-DGINKGO_FORCE_GPU_AWARE_MPI=ON)
 fi
 
+# The GPU-aware MPICH links libcuda, which only a host driver provides. Let
+# FindMPI's test programs link against the toolkit stub (see build-mpich.sh).
+if [[ "${BACKEND:-cpu}" == "cuda" && -d /opt/mpich ]]; then
+    export LD_LIBRARY_PATH="${CUDA_HOME:-/usr/local/cuda}/lib64/stubs:${LD_LIBRARY_PATH:-}"
+fi
+
 if [[ -n "${BUILD_JOBS:-}" ]]; then
     export CMAKE_BUILD_PARALLEL_LEVEL="${BUILD_JOBS}"
 fi

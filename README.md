@@ -74,8 +74,17 @@ For Open MPI use `"ginkgo=*=cuda_openmpi_*" "openmpi=5.*=external_*"`.
 Without the `external_*` pin, conda-forge's own MPI gets installed, which is
 fine for CPU builds and single-node testing.
 
-**Docker**: the images contain MPICH as a stand-in. On HPC systems, replace it
-with the host's MPICH-ABI library at runtime. Container runtimes such as
+**Docker**: the CPU image contains Ubuntu's MPICH. The GPU images contain a
+GPU-aware MPICH (5.0.2, in `/opt/mpich`) built with CUDA, HIP or Level Zero
+support, so device buffers work within a node out of the box. The CUDA build
+links the driver library `libcuda.so.1`, which the host provides at run time
+(`--nv`, NVIDIA container toolkit). Linking or running without a driver, e.g.
+in a CI job without a GPU, needs the toolkit stub:
+`LD_LIBRARY_PATH=/usr/local/cuda/lib64/stubs:$LD_LIBRARY_PATH`. Never set this
+where the real driver should be used, the stub would shadow it.
+
+On HPC systems, replace the image's MPICH with the host's MPICH-ABI library at
+runtime, for GPU-aware communication across nodes. Container runtimes such as
 Sarus, Podman-HPC or Apptainer do this with their MPI hooks; by hand it is a
 bind mount plus `LD_LIBRARY_PATH`, e.g.
 
