@@ -67,7 +67,7 @@ cd "${work}"
 if ! ./configure "${configure_args[@]}"; then
     # The failing check is only explained in the sub-configure logs.
     for log in config.log src/mpl/config.log; do
-        [[ -f "${log}" ]] && { echo "=== ${log} ==="; tail -n 60 "${log}"; }
+        [[ -f "${log}" ]] && { echo "=== ${log} ==="; grep -v "^#define" "${log}" | tail -n 200; }
     done
     exit 1
 fi
