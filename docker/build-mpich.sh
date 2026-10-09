@@ -40,10 +40,11 @@ case "${BACKEND:?}" in
         # records, so configure's test programs and later links can resolve it
         # with the stub directory on LD_LIBRARY_PATH (see README.md).
         ln -sf libcuda.so "${cuda_path}/lib64/stubs/libcuda.so.1"
-        export LDFLAGS="-L${cuda_path}/lib64/stubs ${LDFLAGS:-}"
+        # lib64 itself too: the -L that --with-cuda adds does not reach MPL's
+        # link test for libcudart.
+        export LDFLAGS="-L${cuda_path}/lib64 -L${cuda_path}/lib64/stubs ${LDFLAGS:-}"
         export LD_LIBRARY_PATH="${cuda_path}/lib64/stubs:${LD_LIBRARY_PATH:-}"
-        # The toolkit keeps its libraries in lib64, MPICH only looks in lib.
-        configure_args+=(--with-cuda="${cuda_path}" --with-cuda-lib="${cuda_path}/lib64")
+        configure_args+=(--with-cuda="${cuda_path}")
         gpu_lib=libcuda
         ;;
     rocm)
