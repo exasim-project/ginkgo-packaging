@@ -74,12 +74,12 @@ For Open MPI use `"ginkgo=*=cuda_openmpi_*" "openmpi=5.*=external_*"`.
 Without the `external_*` pin, conda-forge's own MPI gets installed, which is
 fine for CPU builds and single-node testing.
 
-**Docker**: the images contain MPICH 5.0.2 built from source in `/opt/mpich`
-(Ubuntu's package expects a PMIx launcher, so its own `mpiexec` starts every
-rank as a singleton). In the GPU images it is GPU-aware, built with CUDA, HIP or
-Level Zero support, so device buffers work within a node out of the box.
-The SYCL image uses MPICH's dataloop datatype engine, since yaksa's Level Zero
-kernels need Intel's `ocloc`. The CUDA build
+**Docker**: the CPU, CUDA and ROCm images contain MPICH 5.0.2 built from source
+in `/opt/mpich` (Ubuntu's package expects a PMIx launcher, so its own `mpiexec`
+starts every rank as a singleton). In the CUDA and ROCm images it is GPU-aware,
+so device buffers work within a node out of the box. The SYCL image uses the
+Intel MPI of its oneAPI base image, with `I_MPI_OFFLOAD=1` set so it accepts
+device buffers. Both are MPICH ABI. The CUDA build
 links the driver library `libcuda.so.1`, which the host provides at run time
 (`--nv`, NVIDIA container toolkit). Linking or running without a driver, e.g.
 in a CI job without a GPU, needs the toolkit stub:

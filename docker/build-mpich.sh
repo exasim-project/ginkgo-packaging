@@ -2,7 +2,8 @@
 # Builds and installs MPICH inside the Docker base stage, GPU-aware for the GPU
 # backends.
 #   build-mpich.sh <install prefix>
-# Configured through BACKEND (cpu|cuda|rocm|sycl), MPICH_VERSION and MPICH_SHA256.
+# Configured through BACKEND (cpu|cuda|rocm), MPICH_VERSION and MPICH_SHA256.
+# The SYCL image uses the Intel MPI of its oneAPI base image instead.
 #
 # Built from source for every backend: Ubuntu's MPICH is configured with PMIx,
 # which its own mpiexec (hydra) does not provide, so multi-rank runs start every
@@ -53,13 +54,6 @@ case "${BACKEND:?}" in
     rocm)
         configure_args+=(--with-hip="${ROCM_PATH:-/opt/rocm}")
         gpu_lib=libamdhip64
-        ;;
-    sycl)
-        # Level Zero, from the system (libze-dev). The yaksa datatype engine
-        # needs Intel's offline compiler (ocloc) for its ZE kernels, which the
-        # image does not have; dataloop keeps the GPU-aware transfers.
-        configure_args+=(--with-ze --with-datatype-engine=dataloop)
-        gpu_lib=libze_loader
         ;;
     *)
         echo "unknown backend ${BACKEND}" >&2
