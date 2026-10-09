@@ -44,9 +44,10 @@ case "${BACKEND:?}" in
         # link test for libcudart.
         export LDFLAGS="-L${cuda_path}/lib64 -L${cuda_path}/lib64/stubs ${LDFLAGS:-}"
         export LD_LIBRARY_PATH="${cuda_path}/lib64/stubs:${LD_LIBRARY_PATH:-}"
-        # --disable-nvml: the embedded hwloc would otherwise link NVML
-        # (libnvidia-ml.so.1), another library only the driver provides.
-        configure_args+=(--with-cuda="${cuda_path}" --disable-nvml)
+        # --enable-cuda-dlopen (passed to the embedded libfabric): load the CUDA
+        # driver libraries at run time; linked, libfabric's CUDA support also
+        # pulls in NVML (libnvidia-ml.so.1), which only the host provides.
+        configure_args+=(--with-cuda="${cuda_path}" --enable-cuda-dlopen)
         gpu_lib=libcuda
         ;;
     rocm)
