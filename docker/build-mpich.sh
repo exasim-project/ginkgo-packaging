@@ -44,7 +44,9 @@ case "${BACKEND:?}" in
         # link test for libcudart.
         export LDFLAGS="-L${cuda_path}/lib64 -L${cuda_path}/lib64/stubs ${LDFLAGS:-}"
         export LD_LIBRARY_PATH="${cuda_path}/lib64/stubs:${LD_LIBRARY_PATH:-}"
-        configure_args+=(--with-cuda="${cuda_path}")
+        # --disable-nvml: the embedded hwloc would otherwise link NVML
+        # (libnvidia-ml.so.1), another library only the driver provides.
+        configure_args+=(--with-cuda="${cuda_path}" --disable-nvml)
         gpu_lib=libcuda
         ;;
     rocm)
