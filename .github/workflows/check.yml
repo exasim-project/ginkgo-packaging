@@ -51,10 +51,12 @@ jobs:
           BASE: ${{ github.event.pull_request.base.sha }}
         run: |
           changed=$(git diff --name-only "${BASE}" HEAD)
-          grep -qE '^(conda/|\.github/workflows/conda\.yml)' <<< "${changed}" \
-            && echo "conda=true" >> "${GITHUB_OUTPUT}" || true
-          grep -qE '^(docker/|conda/recipe/smoke/|\.github/workflows/docker\.yml)' <<< "${changed}" \
-            && echo "docker=true" >> "${GITHUB_OUTPUT}" || true
+          if grep -qE '^(conda/|\.github/workflows/conda\.yml)' <<< "${changed}"; then
+            echo "conda=true" >> "${GITHUB_OUTPUT}"
+          fi
+          if grep -qE '^(docker/|conda/recipe/smoke/|\.github/workflows/docker\.yml)' <<< "${changed}"; then
+            echo "docker=true" >> "${GITHUB_OUTPUT}"
+          fi
 
   conda-cpu:
     needs: [changes, render]

@@ -74,8 +74,20 @@ For Open MPI use `"ginkgo=*=cuda_openmpi_*" "openmpi=5.*=external_*"`.
 Without the `external_*` pin, conda-forge's own MPI gets installed, which is
 fine for CPU builds and single-node testing.
 
-**Docker**: the images contain MPICH as a stand-in. On HPC systems, replace it
-with the host's MPICH-ABI library at runtime. Container runtimes such as
+**Docker**: the CPU, CUDA and ROCm images contain MPICH 5.0.2 built from source
+in `/opt/mpich` (Ubuntu's package expects a PMIx launcher, so its own `mpiexec`
+starts every rank as a singleton). In the CUDA and ROCm images it is GPU-aware,
+so device buffers work within a node out of the box. The SYCL image uses the
+Intel MPI of its oneAPI base image, with `I_MPI_OFFLOAD=1` set so it accepts
+device buffers. Both are MPICH ABI. The CUDA build
+links the driver library `libcuda.so.1`, which the host provides at run time
+(`--nv`, NVIDIA container toolkit). Linking or running without a driver, e.g.
+in a CI job without a GPU, needs the toolkit stub:
+`LD_LIBRARY_PATH=/usr/local/cuda/lib64/stubs:$LD_LIBRARY_PATH`. Never set this
+where the real driver should be used, the stub would shadow it.
+
+On HPC systems, replace the image's MPICH with the host's MPICH-ABI library at
+runtime, for GPU-aware communication across nodes. Container runtimes such as
 Sarus, Podman-HPC or Apptainer do this with their MPI hooks; by hand it is a
 bind mount plus `LD_LIBRARY_PATH`, e.g.
 

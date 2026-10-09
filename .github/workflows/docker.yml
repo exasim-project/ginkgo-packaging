@@ -147,6 +147,11 @@ jobs:
           docker run --rm -v "${PWD}/conda/recipe/smoke:/smoke:ro" "${IMAGE}:${tag}" bash -c "
             set -e
             cat /opt/ginkgo/share/ginkgo-revision
+            # No GPU driver on the runner: libmpi's libcuda.so.1 resolves to the stub.
+            if [ -d /opt/mpich ] && [ -d /usr/local/cuda/lib64/stubs ]; then
+              export LD_LIBRARY_PATH=/usr/local/cuda/lib64/stubs:\${LD_LIBRARY_PATH}
+            fi
+            if command -v mpichversion >/dev/null; then mpichversion; fi
             cmake -S /smoke -B /tmp/smoke -G Ninja -DCMAKE_BUILD_TYPE=Release -DCMAKE_CXX_COMPILER=${CXX_COMPILER}
             cmake --build /tmp/smoke
             /tmp/smoke/ginkgo-smoke"
