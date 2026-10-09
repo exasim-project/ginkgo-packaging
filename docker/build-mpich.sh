@@ -1,7 +1,12 @@
 #!/usr/bin/env bash
-# Builds and installs a GPU-aware MPICH inside the Docker base stage.
+# Builds and installs MPICH inside the Docker base stage, GPU-aware for the GPU
+# backends.
 #   build-mpich.sh <install prefix>
-# Configured through BACKEND (cuda|rocm|sycl), MPICH_VERSION and MPICH_SHA256.
+# Configured through BACKEND (cpu|cuda|rocm|sycl), MPICH_VERSION and MPICH_SHA256.
+#
+# Built from source for every backend: Ubuntu's MPICH is configured with PMIx,
+# which its own mpiexec (hydra) does not provide, so multi-rank runs start every
+# rank as a singleton.
 #
 # MPICH's configure treats the GPU libraries as optional and silently builds
 # without GPU support when it cannot find them, so the result is checked below.
@@ -25,7 +30,9 @@ configure_args=(
     --enable-fast=O2
 )
 
+gpu_lib=
 case "${BACKEND:?}" in
+    cpu) ;;
     cuda)
         cuda_path="${CUDA_HOME:-/usr/local/cuda}"
         # MPICH links libcuda (the driver), which only the host provides at run
@@ -35,7 +42,8 @@ case "${BACKEND:?}" in
         ln -sf libcuda.so "${cuda_path}/lib64/stubs/libcuda.so.1"
         export LDFLAGS="-L${cuda_path}/lib64/stubs ${LDFLAGS:-}"
         export LD_LIBRARY_PATH="${cuda_path}/lib64/stubs:${LD_LIBRARY_PATH:-}"
-        configure_args+=(--with-cuda="${cuda_path}")
+        # The toolkit keeps its libraries in lib64, MPICH only looks in lib.
+        configure_args+=(--with-cuda="${cuda_path}" --with-cuda-lib="${cuda_path}/lib64")
         gpu_lib=libcuda
         ;;
     rocm)
@@ -43,12 +51,14 @@ case "${BACKEND:?}" in
         gpu_lib=libamdhip64
         ;;
     sycl)
-        # Level Zero, from the system (libze-dev).
-        configure_args+=(--with-ze)
+        # Level Zero, from the system (libze-dev). The yaksa datatype engine
+        # needs Intel's offline compiler (ocloc) for its ZE kernels, which the
+        # image does not have; dataloop keeps the GPU-aware transfers.
+        configure_args+=(--with-ze --with-datatype-engine=dataloop)
         gpu_lib=libze_loader
         ;;
     *)
-        echo "build-mpich.sh is only for GPU backends, got ${BACKEND}" >&2
+        echo "unknown backend ${BACKEND}" >&2
         exit 1
         ;;
 esac
@@ -60,7 +70,7 @@ make install
 cd /
 rm -rf "${work}"
 
-if ! ldd "${prefix}/lib/libmpi.so" | grep -q "${gpu_lib}"; then
+if [[ -n "${gpu_lib}" ]] && ! ldd "${prefix}/lib/libmpi.so" | grep -q "${gpu_lib}"; then
     echo "MPICH was built without ${BACKEND} support (libmpi does not link ${gpu_lib})" >&2
     ldd "${prefix}/lib/libmpi.so" >&2
     exit 1
