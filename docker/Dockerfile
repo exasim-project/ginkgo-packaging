@@ -28,10 +28,13 @@ ARG WITH_MPI=ON
 ARG MPICH_VERSION=5.0.2
 ARG MPICH_SHA256=928c2f18d350a91443fe8024ad01ce2c6009e9c551e0a73e797fc567f119137d
 # The unquoted $( ) adds the optional packages, the word splitting is intended.
+# intel-ocloc: Intel's offline GPU compiler, needed to compile SYCL code ahead of
+# time (e.g. Kokkos with Kokkos_ARCH_INTEL_PVC, -fsycl-targets=spir64_gen).
 # hadolint ignore=SC2046
 RUN apt-get update \
     && apt-get install -y --no-install-recommends \
         build-essential ca-certificates cmake curl file git ninja-build \
+        $( [ "${BACKEND}" = "sycl" ] && echo intel-ocloc ) \
     && rm -rf /var/lib/apt/lists/*
 
 COPY docker/build-mpich.sh /usr/local/bin/build-mpich.sh
