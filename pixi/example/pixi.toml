@@ -9,7 +9,7 @@ name = "ginkgo-example"
 # configured one in CI). Nightlies are only picked when asked for, e.g.
 #   ginkgo = { version = ">=2.0.0.dev0", build = "cpu_nompi_*" }
 # conda-forge/label/mpi-external holds the external_* MPI placeholders.
-channels = ["https://prefix.dev/greole/exasim-project", "conda-forge", "conda-forge/label/mpi-external"]
+channels = ["https://prefix.dev/exasim-project/main", "conda-forge", "conda-forge/label/mpi-external"]
 platforms = [
   "linux-64", "osx-arm64", "osx-64", "win-64",
   # GPU environments solve against a CUDA 12 driver (set CONDA_OVERRIDE_CUDA
