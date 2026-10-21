@@ -154,7 +154,13 @@ jobs:
             if command -v mpichversion >/dev/null; then mpichversion; fi
             cmake -S /smoke -B /tmp/smoke -G Ninja -DCMAKE_BUILD_TYPE=Release -DCMAKE_CXX_COMPILER=${CXX_COMPILER}
             cmake --build /tmp/smoke
-            /tmp/smoke/ginkgo-smoke"
+            /tmp/smoke/ginkgo-smoke
+            # Ahead-of-time SYCL compilation for PVC needs ocloc (as Kokkos_ARCH_INTEL_PVC uses it).
+            if [ \"${CXX_COMPILER}\" = icpx ]; then
+              echo 'int main() { return 0; }' > /tmp/aot.cpp
+              icpx -fsycl -fsycl-targets=spir64_gen -Xsycl-target-backend '-device 12.60.7' /tmp/aot.cpp -o /tmp/aot
+              echo 'SYCL AOT compilation for PVC: ok'
+            fi"
 
       - name: Push the image
         if: inputs.push
