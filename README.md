@@ -37,7 +37,8 @@ conda install -c https://prefix.dev/<channel> -c conda-forge "ginkgo>=2.0.0.dev0
 builds the smoke test against it (`pixi run -e cuda smoke`).
 
 **Docker** (`ghcr.io/<owner>/ginkgo-<backend>`). Tags are `1.10.0`,
-`1.11.0`, `latest`, `nightly` and `nightly-YYYYMMDD`. Each image is the
+`1.11.0`, `latest`, `nightly`, `nightly-YYYYMMDD` and `neon-develop` (the
+Ginkgo commit NeoN's develop branch pins, see `neon.yml`). Each image is the
 backend's devel base image (ubuntu, nvidia/cuda, rocm/dev, intel/oneapi) with
 Ginkgo installed in `/opt/ginkgo`, and `CMAKE_PREFIX_PATH` set so
 `find_package(Ginkgo)` works out of the box.
@@ -118,6 +119,7 @@ scripts/                     render-all, release-plan, install-rocm, docker-buil
 |---|---|---|
 | `release.yml` | manual (`versions`, default `1.10.0 1.11.0`), `repository_dispatch: ginkgo-release` | builds and publishes **only what is missing** for the given releases, then tests with pixi |
 | `nightly.yml` | daily 02:17 UTC, manual | builds `develop` into the shared channel, only if develop moved since the last nightly (manual runs always build), tags `nightly*` |
+| `neon.yml` | manual | builds the Docker images at the Ginkgo commit in `NeoN_GINKGO_TAG` of NeoN's `cmake/Versions.cmake` on develop, tags `neon-develop`; run it whenever NeoN changes its pin |
 | `cleanup.yml` | daily 14:17 UTC, manual (dry run by default) | deletes all but the newest 14 nightly versions; never touches release versions |
 | `conda.yml` | reusable, manual | rattler-build per platform and backend, uploads with `rattler-build upload prefix` |
 | `docker.yml` | reusable, manual | builds one image per backend, runs the smoke test in it, pushes to ghcr.io |
