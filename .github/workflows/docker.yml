@@ -2,7 +2,7 @@ name: docker
 
 # Builds one Docker image per backend for one Ginkgo ref, runs the smoke test
 # inside it and optionally pushes it to ghcr.io/<owner>/ginkgo-<backend>.
-# Called by release.yml and nightly.yml, and can be run by hand.
+# Called by release.yml, nightly.yml and neon.yml, and can be run by hand.
 on:
   workflow_call:
     inputs:

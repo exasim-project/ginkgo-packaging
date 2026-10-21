@@ -1,0 +1,70 @@
+name: neon
+
+# Builds the Docker images for NeoN's CI: Ginkgo at the commit in NeoN_GINKGO_TAG
+# of cmake/Versions.cmake on NeoN's develop branch, tagged "neon-develop".
+# Run it by hand whenever NeoN changes NeoN_GINKGO_TAG.
+on:
+  workflow_dispatch:
+    inputs:
+      backends:
+        description: Comma separated list of cpu, cuda, rocm, sycl
+        default: cuda,rocm,sycl
+      push:
+        description: Push the images to ghcr.io
+        type: boolean
+        default: true
+
+permissions:
+  contents: read
+
+concurrency:
+  group: neon
+  cancel-in-progress: true
+
+jobs:
+  plan:
+    runs-on: ubuntu-latest
+    outputs:
+      sha: ${{ steps.plan.outputs.sha }}
+      version: ${{ steps.plan.outputs.version }}
+    steps:
+      - id: plan
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          ref=$(gh api "repos/exasim-project/NeoN/contents/cmake/Versions.cmake?ref=develop" \
+            --jq .content | base64 -d | sed -n 's/^ *set(NeoN_GINKGO_TAG "\([^"]*\)")/\1/p')
+          if [ -z "${ref}" ]; then
+            echo "::error::no NeoN_GINKGO_TAG in cmake/Versions.cmake of NeoN@develop"
+            exit 1
+          fi
+          repo=ginkgo-project/ginkgo
+          sha=$(gh api "repos/${repo}/commits/${ref}" --jq .sha)
+          if [[ "${ref}" =~ ^v[0-9] ]]; then
+            version="${ref#v}"
+          else
+            # The next release version as declared at that commit, e.g. 2.0.0.dev20260416.
+            committed=$(gh api "repos/${repo}/commits/${sha}" --jq .commit.committer.date)
+            base=$(gh api "repos/${repo}/contents/CMakeLists.txt?ref=${sha}" --jq .content \
+              | base64 -d | sed -n 's/^ *VERSION \([0-9][0-9.]*\)$/\1/p' | head -1)
+            version="${base}.dev$(date -u -d "${committed}" +%Y%m%d)"
+          fi
+          echo "NeoN@develop pins Ginkgo ${ref}, building ${repo}@${sha} as ${version}"
+          {
+            echo "sha=${sha}"
+            echo "version=${version}"
+          } >> "${GITHUB_OUTPUT}"
+
+  docker:
+    needs: plan
+    permissions:
+      contents: read
+      packages: write
+    uses: ./.github/workflows/docker.yml
+    with:
+      ref: ${{ needs.plan.outputs.sha }}
+      version: ${{ needs.plan.outputs.version }}
+      tags: neon-develop
+      backends: ${{ inputs.backends }}
+      push: ${{ inputs.push }}
