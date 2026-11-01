@@ -25,7 +25,9 @@ without MPI, because every other variant is down-prioritized.
 Nightlies have versions like `2.0.0.dev20261007`, which sort above the latest
 release. The recipe gives them a priority penalty larger than any variant's,
 so pixi and conda pick a release unless you ask for a nightly by version.
-Only the newest 14 nightlies are kept (`cleanup.yml`).
+Only the newest nightly is kept: the nightly deletes the previous ones before
+uploading, since the prefix.dev storage quota fits about one next to the
+releases (`cleanup.yml` also keeps 1).
 
 ```sh
 pixi add ginkgo                                       # with https://prefix.dev/<channel> in channels
@@ -118,7 +120,7 @@ scripts/                     render-all, release-plan, install-rocm, docker-buil
 |---|---|---|
 | `release.yml` | manual (`versions`, default `1.10.0 1.11.0`), `repository_dispatch: ginkgo-release` | builds and publishes **only what is missing** for the given releases, then tests with pixi |
 | `nightly.yml` | daily 02:17 UTC, manual | builds `develop` into the shared channel, only if develop moved since the last nightly (manual runs always build), tags `nightly*` |
-| `cleanup.yml` | daily 14:17 UTC, manual (dry run by default) | deletes all but the newest 14 nightly versions; never touches release versions |
+| `cleanup.yml` | daily 14:17 UTC, manual (dry run by default) | deletes all but the newest nightly version; never touches release versions |
 | `conda.yml` | reusable, manual | rattler-build per platform and backend, uploads with `rattler-build upload prefix` |
 | `docker.yml` | reusable, manual | builds one image per backend, runs the smoke test in it, pushes to ghcr.io |
 | `pixi.yml` | reusable, manual | installs the published packages through the pixi example, runs the smoke test |

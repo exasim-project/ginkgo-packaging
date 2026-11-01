@@ -10,7 +10,7 @@ on:
     inputs:
       keep:
         description: Number of nightly versions to keep
-        default: "14"
+        default: "1"
       dry_run:
         description: Only list what would be deleted
         type: boolean
@@ -33,6 +33,6 @@ jobs:
         env:
           PREFIX_CHANNEL: ${{ vars.PREFIX_CHANNEL }}
           PREFIX_API_KEY: ${{ secrets.PREFIX_API_KEY }}
-          KEEP: ${{ inputs.keep || '14' }}
+          KEEP: ${{ inputs.keep || '1' }}
           DRY_RUN: ${{ github.event_name == 'workflow_dispatch' && inputs.dry_run }}
         run: scripts/cleanup-nightlies.sh
