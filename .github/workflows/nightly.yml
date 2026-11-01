@@ -121,3 +121,20 @@ jobs:
     with:
       version: ${{ needs.plan.outputs.version }}
       channel: ${{ vars.PREFIX_CHANNEL }}
+
+  neon:
+    name: bump the NeoN CI images
+    needs: [plan, docker]
+    # Bump whatever images did get pushed, the script skips missing ones.
+    if: ${{ !cancelled() && needs.plan.outputs.build == 'true' && needs.plan.outputs.upload == 'true' }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - env:
+          # Fine-grained token with contents and pull-requests write on NeoN.
+          GH_TOKEN: ${{ secrets.NEON_PR_TOKEN }}
+          NIGHTLY_DATE: ${{ needs.plan.outputs.date }}
+          GINKGO_SHA: ${{ needs.plan.outputs.sha }}
+          IMAGE_OWNER: ${{ github.repository_owner }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        run: scripts/bump-neon-images.sh

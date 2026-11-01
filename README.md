@@ -109,7 +109,8 @@ docker/Dockerfile            one Dockerfile for all backends (build args)
 docker/backends.json         base image and settings per backend
 pixi.toml                    maintainer tasks: render, build, docker
 pixi/example/                consumer example, tested by pixi.yml
-scripts/                     render-all, release-plan, install-rocm, docker-build
+scripts/                     render-all, release-plan, install-rocm, docker-build,
+                             bump-neon-images
 ```
 
 ## Workflows
@@ -117,7 +118,7 @@ scripts/                     render-all, release-plan, install-rocm, docker-buil
 | workflow | trigger | does |
 |---|---|---|
 | `release.yml` | manual (`versions`, default `1.10.0 1.11.0`), `repository_dispatch: ginkgo-release` | builds and publishes **only what is missing** for the given releases, then tests with pixi |
-| `nightly.yml` | daily 02:17 UTC, manual | builds `develop` into the shared channel, only if develop moved since the last nightly (manual runs always build), tags `nightly*` |
+| `nightly.yml` | daily 02:17 UTC, manual | builds `develop` into the shared channel, only if develop moved since the last nightly (manual runs always build), tags `nightly*`, opens a PR on NeoN pinning its LRZ GitLab CI to the new images by digest |
 | `cleanup.yml` | daily 14:17 UTC, manual (dry run by default) | deletes all but the newest 14 nightly versions; never touches release versions |
 | `conda.yml` | reusable, manual | rattler-build per platform and backend, uploads with `rattler-build upload prefix` |
 | `docker.yml` | reusable, manual | builds one image per backend, runs the smoke test in it, pushes to ghcr.io |
@@ -160,6 +161,10 @@ gh api repos/<owner>/ginkgo-packaging/dispatches \
   is set and fall back to trusted publishing otherwise.
 - Images are pushed with `GITHUB_TOKEN`; make the ghcr.io packages public
   after the first push.
+- Optional: the secret `NEON_PR_TOKEN`, a fine-grained token with Contents
+  and Pull requests write access on `exasim-project/NeoN`. With it the nightly
+  opens (and keeps updating) a PR there that points NeoN's GitLab CI at the
+  new images. Without it that step is skipped.
 
 ## Local use
 
