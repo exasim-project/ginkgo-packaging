@@ -5,12 +5,12 @@
 # Configured through the environment:
 #   PREFIX_CHANNEL   prefix.dev channel
 #   PREFIX_API_KEY   API key with delete rights (not needed for DRY_RUN)
-#   KEEP             number of nightly versions to keep (default 14)
+#   KEEP             number of nightly versions to keep (default 1)
 #   DRY_RUN          "true" only lists what would be deleted
 set -euo pipefail
 
 channel="${PREFIX_CHANNEL:?set the PREFIX_CHANNEL repository variable}"
-keep="${KEEP:-14}"
+keep="${KEEP:-1}"
 dry_run="${DRY_RUN:-false}"
 server="${PREFIX_SERVER_URL:-https://prefix.dev}"
 
