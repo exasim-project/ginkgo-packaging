@@ -36,6 +36,10 @@ on:
       upload:
         type: boolean
         default: false
+      keep_nightlies:
+        description: Delete all but this many nightly versions from the channel before uploading, empty to delete none
+        type: string
+        default: ""
   workflow_dispatch:
     inputs:
       ref:
@@ -191,6 +195,28 @@ jobs:
         with:
           rattler-build-version: ${{ env.RATTLER_BUILD_VERSION }}
           setup-only: true
+
+      - uses: actions/checkout@v7
+        if: inputs.keep_nightlies != ''
+        with:
+          path: packaging
+
+      # The channel's storage quota only fits about one nightly next to the
+      # releases, so old nightlies have to go before the new one is uploaded.
+      - name: Delete old nightlies
+        if: inputs.keep_nightlies != ''
+        env:
+          PREFIX_CHANNEL: ${{ inputs.channel || vars.PREFIX_CHANNEL }}
+          PREFIX_API_KEY: ${{ secrets.PREFIX_API_KEY }}
+          KEEP: ${{ inputs.keep_nightlies }}
+        run: |
+          set -euo pipefail
+          # Keep the old nightlies if there is nothing to replace them with.
+          if [ -z "$(find packages -type f \( -name '*.conda' -o -name '*.tar.bz2' \))" ]; then
+            echo "No packages were built, keeping the old nightlies"
+            exit 0
+          fi
+          packaging/scripts/cleanup-nightlies.sh
 
       - name: Upload to prefix.dev
         env:
