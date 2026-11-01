@@ -205,6 +205,9 @@ jobs:
       # releases, so old nightlies have to go before the new one is uploaded.
       - name: Delete old nightlies
         if: inputs.keep_nightlies != ''
+        # Still try the upload if deleting fails, e.g. because the API key
+        # lacks delete rights.
+        continue-on-error: true
         env:
           PREFIX_CHANNEL: ${{ inputs.channel || vars.PREFIX_CHANNEL }}
           PREFIX_API_KEY: ${{ secrets.PREFIX_API_KEY }}
